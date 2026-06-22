@@ -1,0 +1,15 @@
+-- inserindo pessoas
+INSERT INTO PESSOA (id_pessoa, nome, cpf, data_nascimento, is_flamengo, telefone) VALUES
+('a1111111-1111-1111-1111-111111111111', 'Arthur Antunes Coimbra', '11122233344', '1953-03-03', TRUE, '83999991111'),
+('a2222222-2222-2222-2222-222222222222', 'Gabigol da Silva', '22233344455', '1996-08-30', TRUE, '83999992222'),
+('a3333333-3333-3333-3333-333333333333', 'Bruno Henrique Pinto', '33344455566', '1990-12-30', TRUE, '83999993333'),
+('a4444444-4444-4444-4444-444444444444', 'Arrascaeta Giorgian', '44455566677', '1994-06-01', TRUE, '83999994444'),
+('a5555555-5555-5555-5555-555555555555', 'Pedro Guilherme', '55566677788', '1997-06-20', TRUE, '83999995555');
+
+-- inserindo pacientes e vinculando eles à pessoas
+INSERT INTO PACIENTE (id_pessoa, num_convenio, alergias, grupo_sanguineo) VALUES
+('a1111111-1111-1111-1111-111111111111', 'UNIMED-123', 'Nenhuma', 'A+'),
+('a2222222-2222-2222-2222-222222222222', 'SUS-456', 'Dipirona', 'O-'),
+('a3333333-3333-3333-3333-333333333333', 'BRADESCO-789', 'Poeira', 'B+'),
+('a4444444-4444-4444-4444-444444444444', 'AMIL-101', 'Nenhuma', 'AB+'),
+('a5555555-5555-5555-5555-555555555555', 'CASSI-202', 'Penicilina', 'O+');
