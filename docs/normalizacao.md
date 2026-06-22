@@ -1,28 +1,48 @@
-# Normalização
+# Esquema de Normalização e Modelo Lógico
 
-Este documento justifica a normalização das tabelas base do Sistema Hospitalar (Pessoa, Paciente, Profissional, Preceptor, Residente) até a 3FN.
+Este documento formaliza a modelagem das entidades Core (Pessoa, Paciente, Profissional, Preceptor, Residente) mapeadas através da estratégia de **herança por tabela de associação (joined table inheritance)**, provando matematicamente a sua aderência até a 3FN.
 
-## 1. Estratégia de herança: Joined Table Inheritance
-Para mapear a especialização do enunciado, adotamos uma tabela base (`PESSOA`) e tabelas filhas que compartilham a mesma chave primária (`id_pessoa`) como Chave Estrangeira.
+---
 
-## 2. Análise por tabela
+## 1. Modelo Relacional
 
-### PESSOA
-- **Atributos:** `id_pessoa` (PK - UUID), `nome`, `cpf`, `data_nascimento`, `is_flamengo`, `telefone`
-- **1FN:** Todos os atributos são atômicos (telefone é armazenado como string única de contato; nomes são atômicos).
-- **2FN:** Não há dependências parciais, pois a PK é simples (`id_pessoa`). Todos os atributos dependem totalmente do UUID da pessoa.
-- **3FN:** Não há dependências transitivas. Atributos como `is_flamengo` ou `cpf` dependem exclusivamente do ID da pessoa, e não de outros campos não-chave.
-- **Constraints:** `cpf` possui constraint `UNIQUE`. `is_flamengo` possui `NOT NULL DEFAULT TRUE`.
+Chaves Primárias estão **sublinhadas** e Chaves Estrangeiras são indicadas por asterisco (`*`).
 
-### PACIENTE
-- **Atributos:** `id_pessoa` (PK/FK), `num_convenio`, `alergias`, `grupo_sanguineo`
-- **3FN:** Atende aos critérios pois depende diretamente de `id_pessoa`. `num_convenio` é um identificador único do plano, mas não determina os dados clínicos (alergias/sangue), eliminando dependências transitivas.
+* **PESSOA** (__id_pessoa__, nome, cpf, data_nascimento, is_flamengo, telefone)
+* **PACIENTE** (__id_pessoa__\*, num_convenio, alergias, grupo_sanguineo)
+  * `id_pessoa` referencia PESSOA(id_pessoa)
+* **PROFISSIONAL** (__id_pessoa__\*, crm, data_admissao, especialidade, papel_atual)
+  * `id_pessoa` referencia PESSOA(id_pessoa)
+* **PRECEPTOR** (__id_pessoa__\*, titulacao)
+  * `id_pessoa` referencia PROFISSIONAL(id_pessoa)
+* **RESIDENTE** (__id_pessoa__\*, ano_residencia)
+  * `id_pessoa` referencia PROFISSIONAL(id_pessoa)
 
-### PROFISSIONAL
-- **Atributos:** `id_pessoa` (PK/FK), `crm`, `data_admissao`, `especialidade`, `papel_atual` (ENUM)
-- **3FN:** O `crm` é único (`UNIQUE`). O campo `papel_atual` determina se no momento corrente ele atua como preceptor ou residente, mantendo a consistência exigida pelo histórico.
+---
 
-### PRECEPTOR / RESIDENTE
-- **Preceptor:** `id_pessoa` (PK/FK), `titulacao`
-- **Residente:** `id_pessoa` (PK/FK), `ano_residencia` (ENUM: R1, R2, R3)
-- **3FN:** Ambas as tabelas estendem `PROFISSIONAL` de forma limpa. Não há atributos redundantes ou que dependam de campos fora da PK.
+## 2. Prova Formal de Normalização
+
+Definimos $R$ como a relação e $X \rightarrow Y$ como uma Dependência Funcional (DF), onde o determinante $X$ mapeia univocamente o dependente $Y$.
+
+### A. 1FN
+**Definição:** Uma relação $R$ está na 1FN se, e somente se, todos os domínios de seus atributos contêm apenas valores atômicos (indivisíveis) e não existem grupos repetitivos ou atributos multivalorados.
+
+* **Prova:** No esquema implementado, atributos textuais como `nome` e `telefone` guardam cadeias atômicas de caracteres de contato direto (não há vetores ou múltiplos telefones na mesma célula). Atributos clínicos como `alergias` utilizam o tipo `TEXT` de forma declarativa e não-estruturada. Portanto, nenhuma tupla viola a atomicidade de domínio.
+
+### B. 2FN
+**Definição:** Uma relação $R$ está na 2FN se estiver na 1FN e todo atributo não-chave depender funcionalmente de forma **plena** da chave primária (não existem dependências parciais sobre chaves compostas).
+
+* **Prova:** Seja $K$ a Chave Primária de qualquer uma das tabelas core. Nota-se que em todas as cinco tabelas, $|K| = 1$, ou seja, a chave primária é **simples** (composta por um único atributo: `id_pessoa`). 
+* Por definição matemática, se a chave primária não é composta, é impossível a existência de uma dependência funcional parcial de um atributo não-chave em relação a uma parte da chave. Logo, as relações satisfazem a 2FN por vacuidade de subconjuntos de chaves.
+* Exemplificando as Dependências Plenas:
+  * $\{id\_pessoa\} \rightarrow \{nome, cpf, data\_nascimento\}$
+  * $\{id\_pessoa\} \rightarrow \{crm, especialidade\}$
+
+### C. 3FN
+**Definição:** Uma relação $R$ está na 3FN se estiver na 2FN e nenhuma dependência funcional $X \rightarrow Y$ entre atributos não-chave for transitiva (atributos não-chave devem depender exclusivamente da chave primária, e não de outros atributos não-chave).
+
+* **Prova:** Analisando os determinantes das relações:
+  1. Em `PESSOA`, embora o `cpf` seja uma chave candidata (cpf -> id_pessoa), ela possui restrição `UNIQUE`, caracterizando-se como superchave. Não há relações do tipo $A \rightarrow B \rightarrow C$ onde $B$ não seja uma superchave. O atributo `is_flamengo` depende estritamente do indivíduo (id_pessoa).
+  2. Em `PACIENTE`, as condições médicas (`alergias`, `grupo_sanguineo`) dependem unicamente da biologia do paciente ligado à superchave `id_pessoa`. O número do convênio não determina as alergias do indivíduo.
+  3. Em `PROFISSIONAL`, o `crm` atua como chave candidata (`UNIQUE`). O campo de controle de histórico `papel_atual` mapeia o estado da superchave naquele momento temporal.
+* Como não existem dependências transitivas induzidas por atributos não-determinantes, o modelo core encontra-se estritamente na 3FN.
