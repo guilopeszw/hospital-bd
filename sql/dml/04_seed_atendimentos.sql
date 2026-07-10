@@ -12,17 +12,17 @@
 -- ----------------------------------------
 -- PROCEDIMENTOS
 -- ----------------------------------------
-INSERT INTO PROCEDIMENTO (id_procedimento, codigo, nome, tempo_medio_minutos) VALUES
-('d1111111-1111-1111-1111-111111111111', 'SUT-001',    'Sutura simples',                    20),
-('d2222222-2222-2222-2222-222222222222', 'COL-101',    'Coleta de sangue',                  10),
-('d3333333-3333-3333-3333-333333333333', 'MED-205',    'Aplicação de medicação intravenosa', 15),
-('d4444444-4444-4444-4444-444444444444', 'RAIO-X',     'Radiografia de tórax',              25),
-('d5555555-5555-5555-5555-555555555555', 'ELETRO',     'Eletrocardiograma',                 12),
-('d6666666-6666-6666-6666-666666666666', 'CURATIVO',   'Troca de curativo',                 18),
-('d7777777-7777-7777-7777-777777777777', 'PUNCAO',     'Punção venosa',                      8),
-('d8888888-8888-8888-8888-888888888888', 'NEBULIZACAO','Nebulização',                       22),
-('d9999999-9999-9999-9999-999999999999', 'SUT-002',    'Sutura complexa',                   40),
-('daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'DRENAGEM',   'Drenagem de abscesso',              35);
+INSERT INTO PROCEDIMENTO (id_procedimento, codigo, nome, tempo_medio_minutos, nivel_risco) VALUES
+('d1111111-1111-1111-1111-111111111111', 'SUT-001',    'Sutura simples',                    20, 'ALTO'),
+('d2222222-2222-2222-2222-222222222222', 'COL-101',    'Coleta de sangue',                  10, 'BAIXO'),
+('d3333333-3333-3333-3333-333333333333', 'MED-205',    'Aplicação de medicação intravenosa', 15, 'MEDIO'),
+('d4444444-4444-4444-4444-444444444444', 'RAIO-X',     'Radiografia de tórax',              25, 'BAIXO'),
+('d5555555-5555-5555-5555-555555555555', 'ELETRO',     'Eletrocardiograma',                 12, 'BAIXO'),
+('d6666666-6666-6666-6666-666666666666', 'CURATIVO',   'Troca de curativo',                 18, 'BAIXO'),
+('d7777777-7777-7777-7777-777777777777', 'PUNCAO',     'Punção venosa',                      8, 'MEDIO'),
+('d8888888-8888-8888-8888-888888888888', 'NEBULIZACAO','Nebulização',                       22, 'BAIXO'),
+('d9999999-9999-9999-9999-999999999999', 'SUT-002',    'Sutura complexa',                   40, 'ALTO'),
+('daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'DRENAGEM',   'Drenagem de abscesso',              35, 'ALTO');
 
 -- ----------------------------------------
 -- ATENDIMENTOS
@@ -45,7 +45,7 @@ INSERT INTO ATENDIMENTO (id_atendimento, data_hora, duracao_minutos, id_paciente
 INSERT INTO PROCEDIMENTO_REALIZADO (id_atendimento, id_procedimento, quantidade, tempo_real_minutos, observacao, faturado) VALUES
 ('e1111111-1111-1111-1111-111111111111', 'd1111111-1111-1111-1111-111111111111', 1, 18, 'Paciente estável após sutura',              FALSE),
 ('e1111111-1111-1111-1111-111111111111', 'd2222222-2222-2222-2222-222222222222', 1, 12, 'Coleta realizada com sucesso',              FALSE),
-('e2222222-2222-2222-2222-222222222222', 'd2222222-2222-2222-2222-222222222222', 1, 10, 'Coleta em veia periférica',                 FALSE),
+('e2222222-2222-2222-2222-222222222222', 'd2222222-2222-2222-2222-222222222222', 1, 10, 'Coleta em veia periférica',                 TRUE),
 ('e2222222-2222-2222-2222-222222222222', 'd3333333-3333-3333-3333-333333333333', 1, 16, 'Medicação aplicada sem intercorrências',    FALSE),
 ('e3333333-3333-3333-3333-333333333333', 'd4444444-4444-4444-4444-444444444444', 1, 26, 'Radiografia com leve alteração',           FALSE),
 ('e4444444-4444-4444-4444-444444444444', 'd1111111-1111-1111-1111-111111111111', 1, 22, 'Sutura com pontos separados',              FALSE),
