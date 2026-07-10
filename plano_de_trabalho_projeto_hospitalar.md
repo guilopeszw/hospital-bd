@@ -190,3 +190,58 @@ Considerando 4-5 semanas por etapa, sugiro **sprints semanais** com reunião cur
 - **Padronização de código**: usar `black`/`ruff` para formatação Python e SQL formatado de forma consistente (indentação, maiúsculas para palavras-chave SQL).
 - **Variáveis de ambiente**: nunca commitar credenciais; usar `.env` + `.env.example`.
 - **Issues pequenas**: quebrar tasks grandes (ex.: "Sprint 4") em Issues de 1-2 dias cada, isso facilita acompanhamento no Kanban e distribuição de carga entre os três.
+
+---
+
+## 7. Status real e plano personalizado de fechamento da Etapa 1 (análise de 2026-07-10)
+
+> Este documento (seções 1-6) foi o planejamento inicial gerado antes de o time começar a codar. Ele **não vem sendo seguido à risca**: o time convergiu para uma estrutura mais simples do que a sugerida (`sql/queries/` em vez de `sql/consultas/`, um único módulo `src/etapa1/atendimento_crud.py` em vez de `src/etapa1/models/repositories/services`). Esta seção documenta o estado real do repositório, os gaps encontrados contra `projeto_bd.md`, e o plano usado para fechar a Etapa 1. **Etapa 2 está fora de escopo por enquanto** — o foco é terminar a Etapa 1.
+
+### 7.1 O que já estava pronto antes desta análise
+
+- Schema core (`sql/ddl/01`-`06`): Pessoa → Paciente/Profissional → Preceptor/Residente, 100% UUID, CHECKs de CPF/grupo sanguíneo, enums de papel e ano de residência.
+- Schema de negócio (`sql/ddl/07_procedimento.sql`, `08_atendimento.sql`, `09_procedimento_realizado.sql`): PROCEDIMENTO, ATENDIMENTO, PROCEDIMENTO_REALIZADO, todos em UUID, FKs corretas, PK composta em PROCEDIMENTO_REALIZADO, flag `faturado` já presente (mergeado via PR `feat/crud-atendimentos-procedimentos` durante esta própria análise).
+- Seeds de negócio (`sql/dml/04_seed_atendimentos.sql`): 10 procedimentos, 10 atendimentos, 10 procedimento_realizado.
+- CRUD em Python (`src/etapa1/atendimento_crud.py`): 7 das 8 operações pedidas, via psycopg2 puro.
+- Queries de referência em `sql/queries/*.sql` (6 dos 7 arquivos preenchidos).
+- Arquivos legados incompatíveis (schema paralelo em INT/SERIAL) já haviam sido removidos.
+
+### 7.2 Gaps encontrados contra `projeto_bd.md` (Etapa 1)
+
+1. Tabela `UNIDADE` — não existia.
+2. Tabela `ESCALA` — não existia.
+3. `PROCEDIMENTO` sem coluna de nível de risco (bloqueava a consulta analítica "pacientes sem procedimento ALTO").
+4. `sql/queries/inserir_atendimentos.sql` existia mas estava vazio.
+5. Só 1 das 4 consultas analíticas tinha arquivo `.sql` dedicado.
+6. `tests/conftest.py` só aplicava DDL `01`-`06`; nada testava Atendimento/Procedimento/Escala/Unidade.
+7. `docs/der/der_hospitalar.md` divergia do schema real: tabela de junção com nome/atributos errados (`ATENDIMENTO_PROCEDIMENTO` em vez de `PROCEDIMENTO_REALIZADO`), `UNIDADE_HOSPITALAR` com atributos errados, `ESCALA_PLANTAO` com FK genérico único em vez de residente+preceptor, e uma entidade `INTERNACAO` fora do escopo da Etapa 1.
+8. `docs/normalizacao.md` só cobria as 5 tabelas core.
+9. Não existia `README.md` na raiz.
+10. `docs/checklist_etapa1.md` estava desatualizado (dizia "domínio operacional: 0%", o que já não era verdade).
+
+### 7.3 Decisões de schema tomadas
+
+- **`ESCALA`**: dois FKs distintos (`id_residente`, `id_preceptor`) em vez de um FK genérico — a regra "um só preceptor supervisor por residente/plantão" já fica garantida pela própria `UNIQUE(id_unidade, dia_semana, turno, id_residente)` (que não inclui `id_preceptor`), sem precisar de trigger. A regra "mesmo preceptor pode supervisionar vários residentes no mesmo plantão" também já é permitida automaticamente por essa mesma unique não incluir o preceptor.
+- **`UNIDADE.tipo`**: `VARCHAR + CHECK IN (...)` (Enfermaria/UTI/Pronto-Socorro/Ambulatorio), mesmo padrão já usado para `grupo_sanguineo`.
+- **`PROCEDIMENTO.nivel_risco`**: enum (`BAIXO`/`MEDIO`/`ALTO`) em vez de `VARCHAR+CHECK` — evita erro de digitação silencioso já que `'ALTO'` é comparado literalmente na consulta analítica.
+- **Consulta "plantões por unidade no mês corrente"**: como `ESCALA` guarda um plantão recorrente semanal (`dia_semana`), não uma data concreta, a consulta usa `generate_series` nativo do Postgres para varrer os dias do mês e mapear para `dia_semana_enum` — sem precisar de coluna de data nova.
+
+### 7.4 O que foi implementado nesta análise (10/07/2026)
+
+- `sql/ddl/01_enums.sql`: + `dia_semana_enum`, `turno_enum`, `nivel_risco_enum`.
+- `sql/ddl/07_procedimento.sql`: + coluna `nivel_risco`.
+- `sql/ddl/10_unidade.sql`, `sql/ddl/11_escala.sql`: tabelas novas.
+- `sql/dml/04_seed_atendimentos.sql`: + valores de `nivel_risco` nos procedimentos, 1 linha de `PROCEDIMENTO_REALIZADO` com `faturado = TRUE`.
+- `sql/dml/05_seed_unidades.sql`, `sql/dml/06_seed_escalas.sql`: seeds novos (3 unidades, 8 escalas).
+- `tests/conftest.py`: DDL `07`-`11` incluído no setup; reset de schema (`DROP SCHEMA public CASCADE`) adicionado para permitir rodar os testes mais de uma vez contra o mesmo volume Docker.
+- `tests/unit/test_negocio.py` (novo): 6 testes cobrindo FK de Atendimento, UNIQUE de Escala, caso permitido (mesmo preceptor/residentes diferentes), bloqueio de remoção por `faturado`, enum de `nivel_risco` inválido, CHECK de `capacidade_leitos`.
+- `sql/queries/inserir_atendimentos.sql`, `preceptores_mais_atendimentos_mes.sql`, `plantoes_por_unidade_residente_mes.sql`, `pacientes_sem_procedimento_risco_alto.sql`: preenchidos/criados.
+- `src/etapa1/atendimento_crud.py`: conexão via `DATABASE_URL` (em vez de credenciais hardcoded), + `plantoes_por_unidade_mes()` e `pacientes_sem_procedimento_risco_alto()`, CLI via `argparse` (stdlib, sem dependência nova) substituindo a demo hardcoded do `__main__`.
+
+### 7.5 Pendente (próximos passos)
+
+- [ ] Rodar a suíte de testes contra o container Docker para validar as mudanças de schema (bloqueado nesta sessão por falta de `pg_config`/`psycopg2` no ambiente local — ver seção "Como rodar" abaixo).
+- [ ] Corrigir `docs/der/der_hospitalar.md` (nomes/atributos da tabela de junção, `UNIDADE`, `ESCALA`, remover `INTERNACAO` do escopo da Etapa 1).
+- [ ] Completar `docs/normalizacao.md` com as 5 tabelas de negócio.
+- [ ] Criar `README.md` na raiz.
+- [ ] Reescrever `docs/checklist_etapa1.md` para refletir o estado real.
