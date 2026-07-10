@@ -1,17 +1,17 @@
 
+import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime
 
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "dbname=hospital_db user=postgres password=password host=localhost port=5433",
+)
+
 
 def get_connection():
-    return psycopg2.connect(
-        host="localhost",
-        port=5433,
-        database="hospital_db",
-        user="postgres",
-        password="password",
-    )
+    return psycopg2.connect(DATABASE_URL)
 
 
 
@@ -270,18 +270,135 @@ def preceptores_mais_atendimentos_mes(ano: int, mes: int):
         conn.close()
 
 
+def plantoes_por_unidade_mes():
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            WITH dias_mes AS (
+                SELECT dia::date AS dia
+                FROM generate_series(
+                    date_trunc('month', CURRENT_DATE),
+                    date_trunc('month', CURRENT_DATE) + interval '1 month' - interval '1 day',
+                    interval '1 day'
+                ) AS dia
+            ),
+            mapa_dia AS (
+                SELECT dia, (CASE EXTRACT(DOW FROM dia)
+                    WHEN 0 THEN 'domingo' WHEN 1 THEN 'segunda' WHEN 2 THEN 'terca'
+                    WHEN 3 THEN 'quarta'  WHEN 4 THEN 'quinta'  WHEN 5 THEN 'sexta'
+                    WHEN 6 THEN 'sabado' END)::dia_semana_enum AS dia_semana
+                FROM dias_mes
+            )
+            SELECT
+                u.nome               AS unidade,
+                p.nome               AS residente,
+                COUNT(*)             AS total_plantoes_no_mes
+            FROM ESCALA e
+            JOIN mapa_dia m       ON m.dia_semana = e.dia_semana
+            JOIN UNIDADE u        ON u.id_unidade = e.id_unidade
+            JOIN RESIDENTE res    ON res.id_pessoa = e.id_residente
+            JOIN PROFISSIONAL pf  ON pf.id_pessoa = res.id_pessoa
+            JOIN PESSOA p         ON p.id_pessoa = pf.id_pessoa
+            GROUP BY u.nome, p.nome
+            ORDER BY u.nome, total_plantoes_no_mes DESC
+        """)
+        rows = cur.fetchall()
+        for r in rows:
+            print(r)
+        return rows
+    finally:
+        cur.close()
+        conn.close()
+
+
+def pacientes_sem_procedimento_risco_alto():
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT p.nome AS paciente, pac.num_convenio
+            FROM PACIENTE pac
+            JOIN PESSOA p ON p.id_pessoa = pac.id_pessoa
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM ATENDIMENTO a
+                JOIN PROCEDIMENTO_REALIZADO pr ON pr.id_atendimento = a.id_atendimento
+                JOIN PROCEDIMENTO proc         ON proc.id_procedimento = pr.id_procedimento
+                WHERE a.id_paciente = pac.id_pessoa
+                  AND proc.nivel_risco = 'ALTO'
+            )
+            ORDER BY p.nome
+        """)
+        rows = cur.fetchall()
+        for r in rows:
+            print(r)
+        return rows
+    finally:
+        cur.close()
+        conn.close()
+
+
+def _main():
+    import argparse
+
+    parser = argparse.ArgumentParser(description="CLI Etapa 1 - Hospital")
+    sub = parser.add_subparsers(dest="comando", required=True)
+
+    sub.add_parser("ranking-residentes")
+    sub.add_parser("tempo-medio-residente")
+    sub.add_parser("plantoes-mes")
+    sub.add_parser("pacientes-sem-risco-alto")
+
+    p_pac = sub.add_parser("atendimentos-paciente")
+    p_pac.add_argument("id_paciente")
+
+    p_at = sub.add_parser("procedimentos-atendimento")
+    p_at.add_argument("id_atendimento")
+
+    p_prec = sub.add_parser("preceptores-mes")
+    p_prec.add_argument("ano", type=int)
+    p_prec.add_argument("mes", type=int)
+
+    p_rm = sub.add_parser("remover-procedimento")
+    p_rm.add_argument("id_atendimento")
+    p_rm.add_argument("id_procedimento")
+
+    p_upd = sub.add_parser("atualizar-paciente")
+    p_upd.add_argument("id_paciente")
+    p_upd.add_argument("--convenio")
+    p_upd.add_argument("--alergias")
+
+    p_ins = sub.add_parser("inserir-atendimento")
+    p_ins.add_argument("data_hora")
+    p_ins.add_argument("duracao", type=int)
+    p_ins.add_argument("id_paciente")
+    p_ins.add_argument("id_residente")
+    p_ins.add_argument("id_preceptor")
+
+    args = parser.parse_args()
+
+    if args.comando == "ranking-residentes":
+        ranking_residentes()
+    elif args.comando == "tempo-medio-residente":
+        tempo_medio_por_residente()
+    elif args.comando == "plantoes-mes":
+        plantoes_por_unidade_mes()
+    elif args.comando == "pacientes-sem-risco-alto":
+        pacientes_sem_procedimento_risco_alto()
+    elif args.comando == "atendimentos-paciente":
+        listar_atendimentos_paciente(args.id_paciente)
+    elif args.comando == "procedimentos-atendimento":
+        listar_procedimentos_atendimento(args.id_atendimento)
+    elif args.comando == "preceptores-mes":
+        preceptores_mais_atendimentos_mes(args.ano, args.mes)
+    elif args.comando == "remover-procedimento":
+        remover_procedimento_realizado(args.id_atendimento, args.id_procedimento)
+    elif args.comando == "atualizar-paciente":
+        atualizar_paciente(args.id_paciente, novo_convenio=args.convenio, novas_alergias=args.alergias)
+    elif args.comando == "inserir-atendimento":
+        inserir_atendimento(args.data_hora, args.duracao, args.id_paciente, args.id_residente, args.id_preceptor)
+
+
 if __name__ == "__main__":
-    print("\n=== Tempo médio por residente ===")
-    tempo_medio_por_residente()
-
-    print("\n=== Ranking de residentes ===")
-    ranking_residentes()
-
-    print("\n=== Atendimentos do paciente Arthur ===")
-    listar_atendimentos_paciente("a1111111-1111-1111-1111-111111111111")
-
-    print("\n=== Procedimentos do atendimento e1111111 ===")
-    listar_procedimentos_atendimento("e1111111-1111-1111-1111-111111111111")
-
-    print("\n=== Preceptores com +5 atendimentos em jun/2025 ===")
-    preceptores_mais_atendimentos_mes(2025, 6)
+    _main()
