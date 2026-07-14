@@ -136,4 +136,3 @@ Usando a ORM, implemente:
 - Repositório GitHub com commits separados por Etapa 1 e Etapa 2.
 - Vídeo de até 8 minutos demonstrando as novas funcionalidades da Etapa 2.
 - Relatório breve (2 páginas) explicando as decisões de implementação, especialmente sobre triggers vs procedures e escolha da ORM.
-```
