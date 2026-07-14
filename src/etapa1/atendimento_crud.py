@@ -349,6 +349,163 @@ def pacientes_sem_procedimento_risco_alto():
         conn.close()
 
 
+# ------------------------------------------------------------------
+# CADASTROS
+# Todos passam pelo _executar: uma transação, commit no sucesso,
+# rollback + mensagem no erro (CPF/CRM duplicado, FK inexistente,
+# CHECK violado — o banco já barra tudo isso, aqui só traduzimos).
+# ------------------------------------------------------------------
+
+def _executar(sql: str, params: tuple, retorna: bool = True):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(sql, params)
+        valor = cur.fetchone()[0] if retorna else None
+        conn.commit()
+        return valor
+    except psycopg2.Error as e:
+        conn.rollback()
+        print(f"Erro: {e.diag.message_primary or e}")
+        return None
+    finally:
+        cur.close()
+        conn.close()
+
+
+def cadastrar_paciente(nome, cpf, data_nascimento, telefone=None,
+                       num_convenio=None, alergias=None, grupo_sanguineo=None):
+    id_novo = _executar("""
+        WITH nova_pessoa AS (
+            INSERT INTO PESSOA (nome, cpf, data_nascimento, telefone)
+            VALUES (%s, %s, %s, %s)
+            RETURNING id_pessoa
+        )
+        INSERT INTO PACIENTE (id_pessoa, num_convenio, alergias, grupo_sanguineo)
+        SELECT id_pessoa, %s, %s, %s FROM nova_pessoa
+        RETURNING id_pessoa
+    """, (nome, cpf, data_nascimento, telefone, num_convenio, alergias, grupo_sanguineo))
+    if id_novo:
+        print(f"Paciente cadastrado: {id_novo}")
+    return id_novo
+
+
+def cadastrar_profissional(papel, nome, cpf, data_nascimento, crm, data_admissao,
+                           especialidade, ano_residencia=None, titulacao=None,
+                           telefone=None):
+    if papel == "residente" and not ano_residencia:
+        print("Erro: residente exige --ano-residencia (R1/R2/R3).")
+        return None
+    if papel == "preceptor" and not titulacao:
+        print("Erro: preceptor exige --titulacao.")
+        return None
+
+    subtipo = ("INSERT INTO RESIDENTE (id_pessoa, ano_residencia) SELECT id_pessoa, %s FROM novo_prof"
+               if papel == "residente" else
+               "INSERT INTO PRECEPTOR (id_pessoa, titulacao) SELECT id_pessoa, %s FROM novo_prof")
+
+    id_novo = _executar(f"""
+        WITH nova_pessoa AS (
+            INSERT INTO PESSOA (nome, cpf, data_nascimento, telefone)
+            VALUES (%s, %s, %s, %s)
+            RETURNING id_pessoa
+        ), novo_prof AS (
+            INSERT INTO PROFISSIONAL (id_pessoa, crm, data_admissao, especialidade, papel_atual)
+            SELECT id_pessoa, %s, %s, %s, %s FROM nova_pessoa
+            RETURNING id_pessoa
+        )
+        {subtipo}
+        RETURNING id_pessoa
+    """, (nome, cpf, data_nascimento, telefone, crm, data_admissao, especialidade, papel,
+          ano_residencia if papel == "residente" else titulacao))
+    if id_novo:
+        print(f"{papel.capitalize()} cadastrado: {id_novo}")
+    return id_novo
+
+
+def cadastrar_unidade(nome, tipo, capacidade_leitos):
+    id_novo = _executar("""
+        INSERT INTO UNIDADE (nome, tipo, capacidade_leitos)
+        VALUES (%s, %s, %s) RETURNING id_unidade
+    """, (nome, tipo, capacidade_leitos))
+    if id_novo:
+        print(f"Unidade cadastrada: {id_novo}")
+    return id_novo
+
+
+def cadastrar_escala(id_unidade, dia_semana, turno, id_residente, id_preceptor):
+    id_novo = _executar("""
+        INSERT INTO ESCALA (id_unidade, dia_semana, turno, id_residente, id_preceptor)
+        VALUES (%s, %s, %s, %s, %s) RETURNING id_escala
+    """, (id_unidade, dia_semana, turno, id_residente, id_preceptor))
+    if id_novo:
+        print(f"Escala cadastrada: {id_novo}")
+    return id_novo
+
+
+def registrar_procedimento(id_atendimento, id_procedimento, quantidade,
+                           tempo_real_minutos, observacao=None):
+    ok = _executar("""
+        INSERT INTO PROCEDIMENTO_REALIZADO
+            (id_atendimento, id_procedimento, quantidade, tempo_real_minutos, observacao)
+        VALUES (%s, %s, %s, %s, %s)
+        RETURNING id_atendimento
+    """, (id_atendimento, id_procedimento, quantidade, tempo_real_minutos, observacao))
+    if ok:
+        print("Procedimento registrado no atendimento.")
+    return ok
+
+
+def faturar_procedimento(id_atendimento, id_procedimento, valor, data_emissao=None):
+    id_novo = _executar("""
+        INSERT INTO FATURAMENTO (id_atendimento, id_procedimento, valor, data_emissao)
+        VALUES (%s, %s, %s, COALESCE(%s::date, CURRENT_DATE))
+        RETURNING id_faturamento
+    """, (id_atendimento, id_procedimento, valor, data_emissao))
+    if id_novo:
+        print(f"Faturamento emitido: {id_novo} (procedimento agora não pode ser removido)")
+    return id_novo
+
+
+LISTAGENS = {
+    "pacientes": """SELECT pac.id_pessoa AS id, p.nome, p.cpf, pac.num_convenio, pac.grupo_sanguineo
+                    FROM PACIENTE pac JOIN PESSOA p USING (id_pessoa) ORDER BY p.nome""",
+    "residentes": """SELECT r.id_pessoa AS id, p.nome, pf.crm, pf.especialidade, r.ano_residencia
+                     FROM RESIDENTE r JOIN PROFISSIONAL pf USING (id_pessoa)
+                     JOIN PESSOA p USING (id_pessoa) ORDER BY p.nome""",
+    "preceptores": """SELECT pr.id_pessoa AS id, p.nome, pf.crm, pf.especialidade, pr.titulacao
+                      FROM PRECEPTOR pr JOIN PROFISSIONAL pf USING (id_pessoa)
+                      JOIN PESSOA p USING (id_pessoa) ORDER BY p.nome""",
+    "unidades": "SELECT id_unidade AS id, nome, tipo, capacidade_leitos FROM UNIDADE ORDER BY nome",
+    "procedimentos": """SELECT id_procedimento AS id, codigo, nome, tempo_medio_minutos, nivel_risco
+                        FROM PROCEDIMENTO ORDER BY nome""",
+    "atendimentos": """SELECT a.id_atendimento AS id, a.data_hora, a.duracao_minutos, p.nome AS paciente
+                       FROM ATENDIMENTO a JOIN PESSOA p ON p.id_pessoa = a.id_paciente
+                       ORDER BY a.data_hora DESC""",
+    "escalas": """SELECT e.id_escala AS id, u.nome AS unidade, e.dia_semana, e.turno, p.nome AS residente
+                  FROM ESCALA e JOIN UNIDADE u USING (id_unidade)
+                  JOIN PESSOA p ON p.id_pessoa = e.id_residente
+                  ORDER BY u.nome, e.dia_semana""",
+}
+
+
+def listar(entidade: str):
+    """Mostra os UUIDs necessários para os demais comandos."""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute(LISTAGENS[entidade])
+        rows = cur.fetchall()
+        for r in rows:
+            print(" | ".join(f"{k}={v}" for k, v in r.items()))
+        if not rows:
+            print(f"Nenhum registro em {entidade}.")
+        return rows
+    finally:
+        cur.close()
+        conn.close()
+
+
 def _main():
     import argparse
 
@@ -386,6 +543,56 @@ def _main():
     p_ins.add_argument("id_residente")
     p_ins.add_argument("id_preceptor")
 
+    p_lis = sub.add_parser("listar", help="lista registros e seus UUIDs")
+    p_lis.add_argument("entidade", choices=sorted(LISTAGENS))
+
+    p_cpac = sub.add_parser("cadastrar-paciente")
+    p_cpac.add_argument("nome")
+    p_cpac.add_argument("cpf", help="11 digitos, sem pontuacao")
+    p_cpac.add_argument("data_nascimento", help="AAAA-MM-DD")
+    p_cpac.add_argument("--telefone")
+    p_cpac.add_argument("--convenio")
+    p_cpac.add_argument("--alergias")
+    p_cpac.add_argument("--sangue", help="A+, O-, AB+ ...")
+
+    p_cprof = sub.add_parser("cadastrar-profissional")
+    p_cprof.add_argument("papel", choices=["residente", "preceptor"])
+    p_cprof.add_argument("nome")
+    p_cprof.add_argument("cpf")
+    p_cprof.add_argument("data_nascimento", help="AAAA-MM-DD")
+    p_cprof.add_argument("crm")
+    p_cprof.add_argument("data_admissao", help="AAAA-MM-DD")
+    p_cprof.add_argument("especialidade")
+    p_cprof.add_argument("--ano-residencia", choices=["R1", "R2", "R3"], help="obrigatorio p/ residente")
+    p_cprof.add_argument("--titulacao", help="obrigatorio p/ preceptor")
+    p_cprof.add_argument("--telefone")
+
+    p_cuni = sub.add_parser("cadastrar-unidade")
+    p_cuni.add_argument("nome")
+    p_cuni.add_argument("tipo", choices=["Enfermaria", "UTI", "Pronto-Socorro", "Ambulatorio"])
+    p_cuni.add_argument("capacidade_leitos", type=int)
+
+    p_cesc = sub.add_parser("cadastrar-escala")
+    p_cesc.add_argument("id_unidade")
+    p_cesc.add_argument("dia_semana", choices=["segunda", "terca", "quarta", "quinta",
+                                               "sexta", "sabado", "domingo"])
+    p_cesc.add_argument("turno", choices=["manha", "tarde", "noite"])
+    p_cesc.add_argument("id_residente")
+    p_cesc.add_argument("id_preceptor")
+
+    p_reg = sub.add_parser("registrar-procedimento", help="adiciona procedimento a um atendimento")
+    p_reg.add_argument("id_atendimento")
+    p_reg.add_argument("id_procedimento")
+    p_reg.add_argument("quantidade", type=int)
+    p_reg.add_argument("tempo_real_minutos", type=int)
+    p_reg.add_argument("--obs")
+
+    p_fat = sub.add_parser("faturar", help="emite faturamento de um procedimento realizado")
+    p_fat.add_argument("id_atendimento")
+    p_fat.add_argument("id_procedimento")
+    p_fat.add_argument("valor", type=float)
+    p_fat.add_argument("--data-emissao", help="AAAA-MM-DD (padrao: hoje)")
+
     args = parser.parse_args()
 
     if args.comando == "ranking-residentes":
@@ -408,6 +615,28 @@ def _main():
         atualizar_paciente(args.id_paciente, novo_convenio=args.convenio, novas_alergias=args.alergias)
     elif args.comando == "inserir-atendimento":
         inserir_atendimento(args.data_hora, args.duracao, args.id_paciente, args.id_residente, args.id_preceptor)
+    elif args.comando == "listar":
+        listar(args.entidade)
+    elif args.comando == "cadastrar-paciente":
+        cadastrar_paciente(args.nome, args.cpf, args.data_nascimento, telefone=args.telefone,
+                           num_convenio=args.convenio, alergias=args.alergias,
+                           grupo_sanguineo=args.sangue)
+    elif args.comando == "cadastrar-profissional":
+        cadastrar_profissional(args.papel, args.nome, args.cpf, args.data_nascimento, args.crm,
+                               args.data_admissao, args.especialidade,
+                               ano_residencia=args.ano_residencia, titulacao=args.titulacao,
+                               telefone=args.telefone)
+    elif args.comando == "cadastrar-unidade":
+        cadastrar_unidade(args.nome, args.tipo, args.capacidade_leitos)
+    elif args.comando == "cadastrar-escala":
+        cadastrar_escala(args.id_unidade, args.dia_semana, args.turno,
+                         args.id_residente, args.id_preceptor)
+    elif args.comando == "registrar-procedimento":
+        registrar_procedimento(args.id_atendimento, args.id_procedimento, args.quantidade,
+                               args.tempo_real_minutos, observacao=args.obs)
+    elif args.comando == "faturar":
+        faturar_procedimento(args.id_atendimento, args.id_procedimento, args.valor,
+                             data_emissao=args.data_emissao)
 
 
 if __name__ == "__main__":

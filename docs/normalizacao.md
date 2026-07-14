@@ -13,10 +13,15 @@ Chaves Primárias estão **sublinhadas** e Chaves Estrangeiras são indicadas po
   * `id_pessoa` referencia PESSOA(id_pessoa)
 * **PROFISSIONAL** (__id_pessoa__\*, crm, data_admissao, especialidade, papel_atual)
   * `id_pessoa` referencia PESSOA(id_pessoa)
-* **PRECEPTOR** (__id_pessoa__\*, titulacao)
-  * `id_pessoa` referencia PROFISSIONAL(id_pessoa)
-* **RESIDENTE** (__id_pessoa__\*, ano_residencia)
-  * `id_pessoa` referencia PROFISSIONAL(id_pessoa)
+  * `UNIQUE(id_pessoa, papel_atual)` — chave candidata usada como alvo das FKs compostas de PRECEPTOR e RESIDENTE
+* **PRECEPTOR** (__id_pessoa__\*, papel\*, titulacao)
+  * `(id_pessoa, papel)` referencia PROFISSIONAL(id_pessoa, papel_atual); `CHECK (papel = 'preceptor')`
+* **RESIDENTE** (__id_pessoa__\*, papel\*, ano_residencia)
+  * `(id_pessoa, papel)` referencia PROFISSIONAL(id_pessoa, papel_atual); `CHECK (papel = 'residente')`
+
+> A coluna `papel` em PRECEPTOR/RESIDENTE não é redundância de dados: é o mecanismo declarativo que torna a especialização **disjunta** (um profissional exerce um único papel por vez, como exige o enunciado). Ela é constante por tabela — travada pelo CHECK — e não introduz dependência funcional nova, já que $\{id\_pessoa\} \rightarrow \{papel\}$ é trivialmente satisfeita pela chave.
+
+Mecânica, em três peças: (1) `PROFISSIONAL` ganha `UNIQUE(id_pessoa, papel_atual)`, que serve de alvo de FK; (2) `PRECEPTOR` tem `CHECK (papel = 'preceptor')` e FK composta `(id_pessoa, papel) → PROFISSIONAL(id_pessoa, papel_atual)`; (3) `RESIDENTE` faz o simétrico com `'residente'`. Resultado: um profissional com `papel_atual = 'residente'` não consegue ter linha em `PRECEPTOR` — a FK não acha o par `(id_pessoa, 'preceptor')`. Sem trigger.
 
 ---
 
@@ -55,16 +60,20 @@ Definimos $R$ como a relação e $X \rightarrow Y$ como uma Dependência Funcion
 * **PROCEDIMENTO** (__id_procedimento__, codigo, nome, tempo_medio_minutos, nivel_risco)
 * **ATENDIMENTO** (__id_atendimento__, data_hora, duracao_minutos, id_paciente\*, id_residente\*, id_preceptor\*)
   * `id_paciente` referencia PACIENTE(id_pessoa); `id_residente` referencia RESIDENTE(id_pessoa); `id_preceptor` referencia PRECEPTOR(id_pessoa)
-* **PROCEDIMENTO_REALIZADO** (__id_atendimento__\*, __id_procedimento__\*, quantidade, tempo_real_minutos, observacao, faturado)
+* **PROCEDIMENTO_REALIZADO** (__id_atendimento__\*, __id_procedimento__\*, quantidade, tempo_real_minutos, observacao)
   * PK composta; `id_atendimento` referencia ATENDIMENTO(id_atendimento); `id_procedimento` referencia PROCEDIMENTO(id_procedimento)
+* **FATURAMENTO** (__id_faturamento__, id_atendimento\*, id_procedimento\*, valor, data_emissao)
+  * `(id_atendimento, id_procedimento)` referencia PROCEDIMENTO_REALIZADO(id_atendimento, id_procedimento), com `UNIQUE` — no máximo um faturamento por procedimento realizado
 * **ESCALA** (__id_escala__, id_unidade\*, dia_semana, turno, id_residente\*, id_preceptor\*)
   * `UNIQUE(id_unidade, dia_semana, turno, id_residente)`
 
 ## 4. Prova de Normalização — Tabelas de Negócio
 
-### 4.1 UNIDADE, PROCEDIMENTO, ATENDIMENTO, ESCALA (1FN/2FN/3FN)
+### 4.1 UNIDADE, PROCEDIMENTO, ATENDIMENTO, ESCALA, FATURAMENTO (1FN/2FN/3FN)
 
-Todas essas quatro tabelas têm **chave primária simples** (um único atributo UUID). Pelo mesmo argumento da seção 2.B, a 2FN é satisfeita por vacuidade (não há como existir dependência parcial sobre uma chave de tamanho 1). Os atributos não-chave de cada uma dependem apenas do identificador da própria entidade (ex.: `capacidade_leitos` depende só de `id_unidade`; `tempo_medio_minutos` e `nivel_risco` dependem só de `id_procedimento`), sem dependência transitiva entre atributos não-chave — logo, 3FN.
+Todas essas cinco tabelas têm **chave primária simples** (um único atributo UUID). Pelo mesmo argumento da seção 2.B, a 2FN é satisfeita por vacuidade (não há como existir dependência parcial sobre uma chave de tamanho 1). Os atributos não-chave de cada uma dependem apenas do identificador da própria entidade (ex.: `capacidade_leitos` depende só de `id_unidade`; `tempo_medio_minutos` e `nivel_risco` dependem só de `id_procedimento`; `valor` e `data_emissao` dependem só de `id_faturamento`), sem dependência transitiva entre atributos não-chave — logo, 3FN.
+
+Sobre `FATURAMENTO`: o par `(id_atendimento, id_procedimento)` é **chave candidata** (tem `UNIQUE`), e portanto superchave — a FD $\{id\_atendimento, id\_procedimento\} \rightarrow \{valor, data\_emissao\}$ não é transitiva por atributo não-chave, e a 3FN se mantém. Modelar o faturamento como entidade própria, em vez de uma flag booleana `faturado` dentro de `PROCEDIMENTO_REALIZADO`, também elimina a dependência de um atributo (`valor`) que não teria onde morar sem gerar redundância.
 
 Único ponto que merece nota: em `ESCALA`, o atributo `dia_semana` é categórico (segunda-domingo), não uma data concreta — isso é modelagem proposital (plantão recorrente semanal, não um evento pontual), e não fere nenhuma forma normal: `dia_semana`, `turno`, `id_unidade`, `id_residente` e `id_preceptor` dependem todos apenas de `id_escala`.
 
@@ -72,8 +81,9 @@ Todas essas quatro tabelas têm **chave primária simples** (um único atributo 
 
 Esta é a única tabela com **chave primária composta** (`id_atendimento`, `id_procedimento`), então é o único caso em que a 2FN precisa ser provada de verdade (não por vacuidade).
 
-* **1FN:** `quantidade`, `tempo_real_minutos`, `observacao` e `faturado` são todos atômicos (inteiros, texto livre e booleano) — sem grupos repetitivos.
+* **1FN:** `quantidade`, `tempo_real_minutos` e `observacao` são todos atômicos (inteiros e texto livre) — sem grupos repetitivos.
 * **2FN:** Seja $K = \{id\_atendimento, id\_procedimento\}$ a chave composta. Testamos dependência parcial para cada atributo não-chave:
   * `quantidade`, `tempo_real_minutos`, `observacao` — nenhum depende apenas de `id_atendimento` (o mesmo atendimento pode ter vários procedimentos, cada um com tempo/quantidade diferentes) nem apenas de `id_procedimento` (o mesmo procedimento executado em atendimentos diferentes pode ter tempos reais diferentes — ex.: uma sutura simples pode levar 18min num atendimento e 22min em outro, como nos dados de seed). Logo, esses atributos dependem da combinação inteira $\{id\_atendimento, id\_procedimento\} \rightarrow \{quantidade, tempo\_real\_minutos, observacao\}$, sem dependência parcial — 2FN satisfeita.
-  * `faturado` segue o mesmo raciocínio: é uma flag por ocorrência do procedimento naquele atendimento específico, não uma propriedade do procedimento em geral nem do atendimento como um todo.
-* **3FN:** Não há dependência transitiva entre os atributos não-chave (`observacao` não determina `faturado`, por exemplo) — todos dependem exclusivamente da chave composta completa. Logo, `PROCEDIMENTO_REALIZADO` está na 3FN.
+* **3FN:** Não há dependência transitiva entre os atributos não-chave (`observacao` não determina `quantidade`, por exemplo) — todos dependem exclusivamente da chave composta completa. Logo, `PROCEDIMENTO_REALIZADO` está na 3FN.
+
+> Nota de projeto: a situação de faturamento **não** é um atributo desta tabela. Uma flag `faturado` guardaria só metade do fato (falta valor e data de emissão) e viraria redundância no dia em que o faturamento ganhasse atributos próprios. O fato "este procedimento realizado foi faturado por R$ X em tal data" mora na relação `FATURAMENTO`, cuja existência (ou não) responde à pergunta que o enunciado faz na hora de remover um procedimento.

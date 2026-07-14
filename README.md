@@ -217,7 +217,7 @@ python -m src.etapa1.atendimento_crud procedimentos-atendimento <id_atendimento>
 # Preceptores com mais de 5 atendimentos em um mês
 python -m src.etapa1.atendimento_crud preceptores-mes <ano> <mes>
 
-# Remover procedimento realizado (bloqueado se faturado)
+# Remover procedimento realizado (bloqueado se houver faturamento associado)
 python -m src.etapa1.atendimento_crud remover-procedimento <id_atendimento> <id_procedimento>
 
 # Atualizar dados de paciente
@@ -225,6 +225,39 @@ python -m src.etapa1.atendimento_crud atualizar-paciente <id_paciente> --conveni
 
 # Inserir novo atendimento
 python -m src.etapa1.atendimento_crud inserir-atendimento "2025-07-01 10:00" 30 <id_paciente> <id_residente> <id_preceptor>
+```
+
+#### Cadastros
+
+Os comandos acima exigem UUIDs. Use `listar` para descobri-los sem decorar nada:
+
+```bash
+# Lista registros e seus UUIDs
+python -m src.etapa1.atendimento_crud listar pacientes
+python -m src.etapa1.atendimento_crud listar residentes | preceptores | unidades | procedimentos | atendimentos | escalas
+```
+
+```bash
+# Cadastrar paciente (cria PESSOA + PACIENTE numa transação só)
+python -m src.etapa1.atendimento_crud cadastrar-paciente "Nome do Paciente" 12345678901 1990-05-20 \
+    --convenio UNIMED-123 --sangue A+ --alergias "Dipirona" --telefone 83999990000
+
+# Cadastrar profissional (residente exige --ano-residencia; preceptor exige --titulacao)
+python -m src.etapa1.atendimento_crud cadastrar-profissional residente "Nome" 12345678902 1998-01-10 \
+    "CRM/PB 1234" 2025-02-01 Cardiologia --ano-residencia R1
+python -m src.etapa1.atendimento_crud cadastrar-profissional preceptor "Nome" 12345678903 1975-01-10 \
+    "CRM/PB 5678" 2010-02-01 Cardiologia --titulacao Doutor
+
+# Cadastrar unidade e escala de plantão
+python -m src.etapa1.atendimento_crud cadastrar-unidade "Ambulatorio Norte" Ambulatorio 15
+python -m src.etapa1.atendimento_crud cadastrar-escala <id_unidade> segunda tarde <id_residente> <id_preceptor>
+
+# Registrar procedimento realizado num atendimento
+python -m src.etapa1.atendimento_crud registrar-procedimento <id_atendimento> <id_procedimento> 1 15 \
+    --obs "Sem intercorrências"
+
+# Emitir faturamento (a partir daí o procedimento não pode mais ser removido)
+python -m src.etapa1.atendimento_crud faturar <id_atendimento> <id_procedimento> 130.50
 ```
 
 > **Dica:** Use `--help` para ver detalhes de cada subcomando:
