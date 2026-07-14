@@ -85,34 +85,7 @@ Este documento substitui o planejamento genérico anterior (sprints fixos, divis
 
 ---
 
-## 3. Organização do projeto — decisões
-
-### 3.1 `sql/` — está ok como está, não criar pasta "crud"
-`sql/ddl/`, `sql/dml/`, `sql/queries/` já separam schema, seed e consultas. `queries/` tem 10 arquivos flat com nomes claros (`inserir_atendimentos.sql`, `listar_atendimentos_paciente.sql`, etc.) — criar uma subpasta `queries/crud/` vs `queries/analiticas/` para 10 arquivos é organizar por organizar. Numeração de `ddl/`/`dml/` já é consistente (01–12 / 01–07). Nada a mudar aqui agora.
-
-Quando a Etapa 2 chegar, ela já ganha pastas próprias por natureza do objeto SQL (não por reorganizar a Etapa 1): `sql/procedures/`, `sql/triggers/`, `sql/views/`.
-
-### 3.2 `src/etapa1/` — manter, não separar por branch
-A Etapa 2 pede explicitamente para **reimplementar** as operações da Etapa 1 via ORM — ou seja, as duas versões (SQL puro e ORM) precisam existir **ao mesmo tempo** no repositório final. O item 7 da Etapa 2 pede um "repositório com commits separados por Etapa 1 e Etapa 2", não um repositório onde só uma etapa está visível por vez. Se o código da Etapa 1 morasse numa branch separada, a entrega final (main) só mostraria a Etapa 2 — quebra o requisito. Então:
-
-- Manter `src/etapa1/` como está.
-- Quando começar a Etapa 2, criar `src/etapa2/` do lado, não substituir.
-- Branches continuam servindo para trabalho em andamento (feature branches mergeadas em `main`), não para particionar entregas que precisam coexistir.
-
-### 3.3 `atendimento_crud.py` monolítico — concordo em parte
-Um esquema de camadas tipo `models/repositories/services` seria over-engineering para CRUD em SQL puro (isso é literalmente o trabalho da ORM na Etapa 2). O problema real hoje é mais simples: o arquivo mistura funções de acesso a dados com o parsing do CLI (`argparse`) — quem importar o módulo (um teste, ou futuramente `etapa2` comparando comportamento) carrega a montagem do CLI sem precisar. Split mínimo que resolve isso, sem inventar camada nova:
-
-- `src/etapa1/atendimento_crud.py` — só as funções de dados (o que já é hoje, menos o bloco de CLI).
-- `src/etapa1/cli.py` — `argparse`, dispatch e `if __name__ == "__main__"`.
-
-Dois arquivos, não mais que isso. Registrado como item de "Melhorias" abaixo — é polimento, não bloqueia nota.
-
-### 3.4 Padronização de nomes
-Já está padronizado: `ddl`/`dml` numerados por dependência, `queries/` em `snake_case` batendo com o nome da operação/tabela. Nenhuma renomeação necessária.
-
----
-
-## 4. Estratégia GitHub — separar Etapa 1 de Etapa 2
+## Estratégia GitHub — separar Etapa 1 de Etapa 2
 
 O requisito ("commits separados por Etapa 1 e Etapa 2") é resolvido com **tags do git**, não com branches long-lived — é o recurso nativo pra marcar um corte no histórico sem duplicar/esconder código:
 
@@ -122,22 +95,6 @@ O requisito ("commits separados por Etapa 1 e Etapa 2") é resolvido com **tags 
 4. Qualquer pessoa (incluindo quem for corrigir) vê exatamente o que foi Etapa 2 com `git log v1.0-etapa1..v1.0-etapa2` ou comparando as tags no GitHub — zero ferramenta extra, zero branch para gerenciar.
 
 Custo total: dois comandos `git tag`. Mencionar as tags no `README.md` quando a Etapa 2 estiver perto do fim.
-
----
-
-## 5. Melhorias (backlog — não bloqueia nota)
-
-- [ ] Dividir `atendimento_crud.py` em funções + `cli.py` (seção 3.3)
-- [ ] Exportar `03-modelagem/01-der.md` para PDF
-- [ ] Revisão cruzada do modelo entre os integrantes do grupo
-- [ ] `.env.example` documentando `DATABASE_URL` (hoje funciona via variável de ambiente com default hardcoded, mas não há um arquivo de exemplo commitado)
-
-## 6. Futuro (Etapa 2 — só começar depois da Etapa 1 fechada)
-
-- Criar `sql/procedures/`, `sql/triggers/`, `sql/views/`
-- Criar `src/etapa2/` com models SQLAlchemy + Alembic
-- Decidir e criar a tabela `INTERNACAO` (necessária só para `vw_pacientes_internados`)
-- Tags `v1.0-etapa1` / `v1.0-etapa2` (seção 4)
 
 ---
 
