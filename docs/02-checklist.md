@@ -11,14 +11,14 @@
 
 ## 1. Modelagem
 
-- [x] DER completo em Mermaid (`docs/der/der_hospitalar.md`), cobrindo Pessoa/Paciente/Profissional/Preceptor/Residente, Unidade, Atendimento, Procedimento, Procedimento_Realizado, Faturamento e Escala.
+- [x] DER completo em Mermaid (`03-modelagem/01-der.md`), cobrindo Pessoa/Paciente/Profissional/Preceptor/Residente, Unidade, Atendimento, Procedimento, Procedimento_Realizado, Faturamento e Escala.
 - [ ] **PDF de entrega do DER**, com a justificativa de cardinalidade (mínimo, máximo e participação) de cada relacionamento e de cada especialização — pendência de entrega, a cargo do time.
-- [x] Modelo relacional completo (`docs/normalizacao.md`, seções 1 e 3).
+- [x] Modelo relacional completo (`03-modelagem/02-normalizacao.md`, seções 1 e 3).
 - [x] Normalização até 3FN justificada para todas as tabelas, incluindo a prova não-trivial de 2FN de `PROCEDIMENTO_REALIZADO` (chave composta).
 
 ## 2. Implementação do BD
 
-- [x] DDL completo em `sql/ddl/01`–`12`, todos UUID, com PK/FK/CHECK/UNIQUE/NOT NULL.
+- [x] DDL completo em `../sql/ddl/01`–`12`, todos UUID, com PK/FK/CHECK/UNIQUE/NOT NULL.
 - [x] Seeds acima do mínimo exigido: 5 pacientes, 5 preceptores, 5 residentes, 3 unidades, 10 procedimentos, **16 atendimentos**, **18 procedimentos realizados**, 8 escalas, 3 faturamentos.
 - [x] Volume de seed **calibrado para as consultas analíticas não voltarem vazias**: Dr. Jorge Jesus tem 8 atendimentos em junho/2025 (aparece no `HAVING > 5`) e Dra. Yuska tem exatamente 5 (não aparece — mostra o limite funcionando).
 
@@ -43,7 +43,7 @@ Todas rodadas contra o banco populado; resultados conferidos:
 
 ## 5. Documentação e apresentação
 
-- [x] `README.md` com instalação, Docker, seeds, testes, CLI, geração do PDF e tabela das regras de negócio garantidas pelo schema.
+- [x] `../README.md` com instalação, Docker, seeds, testes, CLI, geração do PDF e tabela das regras de negócio garantidas pelo schema.
 - [ ] Apresentação de 10 minutos demonstrando as funcionalidades (a cargo do time).
 - [ ] Revisão cruzada do modelo (cada pessoa revisa o domínio de outra) — recomendado antes da entrega.
 
@@ -51,9 +51,9 @@ Todas rodadas contra o banco populado; resultados conferidos:
 
 ## Testes automatizados — 16 passando
 
-- `tests/conftest.py` recria o schema do zero a cada sessão (`DROP SCHEMA public CASCADE` + DDL `01`–`12`). Como isso apaga os seeds, refaça o passo 2 do README antes de demonstrar a CLI.
-- `tests/unit/test_core_entities.py` (5): CPF único, regex de CPF, grupo sanguíneo, default de `is_flamengo`.
-- `tests/unit/test_negocio.py` (11): FK de Atendimento, UNIQUE de Escala, mesmo preceptor com residentes diferentes, enum de `nivel_risco`, CHECK de `capacidade_leitos`, os 4 casos de faturamento (bloqueia delete, FK RESTRICT, permite delete sem faturamento, não fatura duas vezes) e os 2 de exclusividade de papel.
+- `../tests/conftest.py` recria o schema do zero a cada sessão (`DROP SCHEMA public CASCADE` + DDL `01`–`12`). Como isso apaga os seeds, refaça o passo 2 do README antes de demonstrar a CLI.
+- `../tests/unit/test_core_entities.py` (5): CPF único, regex de CPF, grupo sanguíneo, default de `is_flamengo`.
+- `../tests/unit/test_negocio.py` (11): FK de Atendimento, UNIQUE de Escala, mesmo preceptor com residentes diferentes, enum de `nivel_risco`, CHECK de `capacidade_leitos`, os 4 casos de faturamento (bloqueia delete, FK RESTRICT, permite delete sem faturamento, não fatura duas vezes) e os 2 de exclusividade de papel.
 
 ## Decisões de modelagem registradas
 

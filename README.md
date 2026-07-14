@@ -287,13 +287,21 @@ hospital-bd/
 │       ├── test_core_entities.py   # Testes: Pessoa/Paciente
 │       └── test_negocio.py         # Testes: regras de negócio
 ├── docs/
-│   ├── der/
-│   │   └── der_hospitalar.md       # DER em Mermaid
-│   ├── normalizacao.md             # Prova formal de normalização até 3FN
-│   ├── checklist_etapa1.md         # Progresso detalhado da Etapa 1
-│   └── ...                         # Novos documentos por etapa
-├── projeto_bd.md                   # Especificação completa do projeto
-├── plano_de_trabalho_projeto_hospitalar.md  # Planejamento e backlog
+│   ├── 00-especificacao.md         # Especificação completa do projeto
+│   ├── 01-plano-de-trabalho.md     # Planejamento e backlog
+│   ├── 02-checklist.md             # Progresso detalhado da Etapa 1
+│   ├── 03-modelagem/
+│   │   ├── 01-der.md               # DER em Mermaid
+│   │   └── 02-normalizacao.md      # Prova formal de normalização até 3FN
+│   ├── 04-banco/
+│   │   ├── 01-ddl.md               # CREATE TABLE e constraints
+│   │   ├── 02-dml.md               # Seeds e dados de teste
+│   │   └── 03-queries.md           # CRUD + consultas analíticas
+│   ├── 05-aplicacao/
+│   │   ├── 01-cli.md               # CLI reference
+│   │   └── 02-testes.md            # Testes automatizados
+│   └── 06-infraestrutura/
+│       └── 01-docker.md            # Docker PostgreSQL
 ├── requirements.txt                # Dependências Python
 └── README.md                       # Este arquivo
 ```
@@ -304,11 +312,17 @@ hospital-bd/
 
 | Documento | Descrição |
 |-----------|-----------|
-| [`docs/der/der_hospitalar.md`](docs/der/der_hospitalar.md) | Diagrama Entidade-Relacionamento (Mermaid) |
-| [`docs/normalizacao.md`](docs/normalizacao.md) | Modelo lógico + prova formal de normalização até 3FN |
-| [`docs/checklist_etapa1.md`](docs/checklist_etapa1.md) | Checklist de progresso da Etapa 1 com decisões de modelagem |
-| [`projeto_bd.md`](projeto_bd.md) | Especificação completa do projeto (requisitos das Etapas 1 e 2) |
-| [`plano_de_trabalho_projeto_hospitalar.md`](plano_de_trabalho_projeto_hospitalar.md) | Planejamento operacional, backlog e estratégia de organização |
+| [`docs/00-especificacao.md`](docs/00-especificacao.md) | Especificação completa do projeto (requisitos Etapas 1 e 2) |
+| [`docs/01-plano-de-trabalho.md`](docs/01-plano-de-trabalho.md) | Planejamento operacional, backlog e estratégia |
+| [`docs/02-checklist.md`](docs/02-checklist.md) | Progresso detalhado da Etapa 1 + decisões de modelagem |
+| [`docs/03-modelagem/01-der.md`](docs/03-modelagem/01-der.md) | Diagrama Entidade-Relacionamento (Mermaid) |
+| [`docs/03-modelagem/02-normalizacao.md`](docs/03-modelagem/02-normalizacao.md) | Prova formal de normalização até 3FN |
+| [`docs/04-banco/01-ddl.md`](docs/04-banco/01-ddl.md) | DDL — definição do esquema, enums e constraints |
+| [`docs/04-banco/02-dml.md`](docs/04-banco/02-dml.md) | DML — seeds e dados de teste |
+| [`docs/04-banco/03-queries.md`](docs/04-banco/03-queries.md) | Queries — CRUD e consultas analíticas |
+| [`docs/05-aplicacao/01-cli.md`](docs/05-aplicacao/01-cli.md) | CLI — referência completa de subcomandos |
+| [`docs/05-aplicacao/02-testes.md`](docs/05-aplicacao/02-testes.md) | Testes — estrutura, fixtures e cobertura |
+| [`docs/06-infraestrutura/01-docker.md`](docs/06-infraestrutura/01-docker.md) | Docker — setup PostgreSQL |
 
 ---
 

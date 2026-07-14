@@ -37,7 +37,7 @@ Definimos $R$ como a relação e $X \rightarrow Y$ como uma Dependência Funcion
 ### B. 2FN
 **Definição:** Uma relação $R$ está na 2FN se estiver na 1FN e todo atributo não-chave depender funcionalmente de forma **plena** da chave primária (não existem dependências parciais sobre chaves compostas).
 
-* **Prova:** Seja $K$ a Chave Primária de qualquer uma das tabelas core. Nota-se que em todas as cinco tabelas, $|K| = 1$, ou seja, a chave primária é **simples** (composta por um único atributo: `id_pessoa`). 
+* **Prova:** Seja $K$ a Chave Primária de qualquer uma das tabelas core. Nota-se que em todas as cinco tabelas, $|K| = 1$, ou seja, a chave primária é **simples** (composta por um único atributo: `id_pessoa`).
 * Por definição matemática, se a chave primária não é composta, é impossível a existência de uma dependência funcional parcial de um atributo não-chave em relação a uma parte da chave. Logo, as relações satisfazem a 2FN por vacuidade de subconjuntos de chaves.
 * Exemplificando as Dependências Plenas:
   * $\{id\_pessoa\} \rightarrow \{nome, cpf, data\_nascimento\}$
