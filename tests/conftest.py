@@ -21,10 +21,17 @@ def setup_database():
         "sql/ddl/03_paciente.sql",
         "sql/ddl/04_profissional.sql",
         "sql/ddl/05_preceptor.sql",
-        "sql/ddl/06_residente.sql"
+        "sql/ddl/06_residente.sql",
+        "sql/ddl/07_procedimento.sql",
+        "sql/ddl/08_atendimento.sql",
+        "sql/ddl/09_procedimento_realizado.sql",
+        "sql/ddl/10_unidade.sql",
+        "sql/ddl/11_escala.sql",
+        "sql/ddl/12_faturamento.sql",
     ]
-    
+
     try:
+        cursor.execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
         for file_name in ddl_files:
             file_path = os.path.join(base_dir, file_name)
             

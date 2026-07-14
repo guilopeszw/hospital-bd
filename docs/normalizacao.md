@@ -4,7 +4,7 @@ Este documento formaliza a modelagem das entidades Core (Pessoa, Paciente, Profi
 
 ---
 
-## 1. Modelo Relacional
+## 1. Modelo Relacional — Core
 
 Chaves Primárias estão **sublinhadas** e Chaves Estrangeiras são indicadas por asterisco (`*`).
 
@@ -46,3 +46,34 @@ Definimos $R$ como a relação e $X \rightarrow Y$ como uma Dependência Funcion
   2. Em `PACIENTE`, as condições médicas (`alergias`, `grupo_sanguineo`) dependem unicamente da biologia do paciente ligado à superchave `id_pessoa`. O número do convênio não determina as alergias do indivíduo.
   3. Em `PROFISSIONAL`, o `crm` atua como chave candidata (`UNIQUE`). O campo de controle de histórico `papel_atual` mapeia o estado da superchave naquele momento temporal.
 * Como não existem dependências transitivas induzidas por atributos não-determinantes, o modelo core encontra-se estritamente na 3FN.
+
+---
+
+## 3. Modelo Relacional — Tabelas de Negócio
+
+* **UNIDADE** (__id_unidade__, nome, tipo, capacidade_leitos)
+* **PROCEDIMENTO** (__id_procedimento__, codigo, nome, tempo_medio_minutos, nivel_risco)
+* **ATENDIMENTO** (__id_atendimento__, data_hora, duracao_minutos, id_paciente\*, id_residente\*, id_preceptor\*)
+  * `id_paciente` referencia PACIENTE(id_pessoa); `id_residente` referencia RESIDENTE(id_pessoa); `id_preceptor` referencia PRECEPTOR(id_pessoa)
+* **PROCEDIMENTO_REALIZADO** (__id_atendimento__\*, __id_procedimento__\*, quantidade, tempo_real_minutos, observacao, faturado)
+  * PK composta; `id_atendimento` referencia ATENDIMENTO(id_atendimento); `id_procedimento` referencia PROCEDIMENTO(id_procedimento)
+* **ESCALA** (__id_escala__, id_unidade\*, dia_semana, turno, id_residente\*, id_preceptor\*)
+  * `UNIQUE(id_unidade, dia_semana, turno, id_residente)`
+
+## 4. Prova de Normalização — Tabelas de Negócio
+
+### 4.1 UNIDADE, PROCEDIMENTO, ATENDIMENTO, ESCALA (1FN/2FN/3FN)
+
+Todas essas quatro tabelas têm **chave primária simples** (um único atributo UUID). Pelo mesmo argumento da seção 2.B, a 2FN é satisfeita por vacuidade (não há como existir dependência parcial sobre uma chave de tamanho 1). Os atributos não-chave de cada uma dependem apenas do identificador da própria entidade (ex.: `capacidade_leitos` depende só de `id_unidade`; `tempo_medio_minutos` e `nivel_risco` dependem só de `id_procedimento`), sem dependência transitiva entre atributos não-chave — logo, 3FN.
+
+Único ponto que merece nota: em `ESCALA`, o atributo `dia_semana` é categórico (segunda-domingo), não uma data concreta — isso é modelagem proposital (plantão recorrente semanal, não um evento pontual), e não fere nenhuma forma normal: `dia_semana`, `turno`, `id_unidade`, `id_residente` e `id_preceptor` dependem todos apenas de `id_escala`.
+
+### 4.2 PROCEDIMENTO_REALIZADO (a única prova de 2FN não-trivial do documento)
+
+Esta é a única tabela com **chave primária composta** (`id_atendimento`, `id_procedimento`), então é o único caso em que a 2FN precisa ser provada de verdade (não por vacuidade).
+
+* **1FN:** `quantidade`, `tempo_real_minutos`, `observacao` e `faturado` são todos atômicos (inteiros, texto livre e booleano) — sem grupos repetitivos.
+* **2FN:** Seja $K = \{id\_atendimento, id\_procedimento\}$ a chave composta. Testamos dependência parcial para cada atributo não-chave:
+  * `quantidade`, `tempo_real_minutos`, `observacao` — nenhum depende apenas de `id_atendimento` (o mesmo atendimento pode ter vários procedimentos, cada um com tempo/quantidade diferentes) nem apenas de `id_procedimento` (o mesmo procedimento executado em atendimentos diferentes pode ter tempos reais diferentes — ex.: uma sutura simples pode levar 18min num atendimento e 22min em outro, como nos dados de seed). Logo, esses atributos dependem da combinação inteira $\{id\_atendimento, id\_procedimento\} \rightarrow \{quantidade, tempo\_real\_minutos, observacao\}$, sem dependência parcial — 2FN satisfeita.
+  * `faturado` segue o mesmo raciocínio: é uma flag por ocorrência do procedimento naquele atendimento específico, não uma propriedade do procedimento em geral nem do atendimento como um todo.
+* **3FN:** Não há dependência transitiva entre os atributos não-chave (`observacao` não determina `faturado`, por exemplo) — todos dependem exclusivamente da chave composta completa. Logo, `PROCEDIMENTO_REALIZADO` está na 3FN.

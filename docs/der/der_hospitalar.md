@@ -50,37 +50,33 @@ erDiagram
         uuid id_procedimento PK
         varchar codigo UK
         varchar nome
-        integer tempo_medio_execucao
+        integer tempo_medio_minutos
+        nivel_risco_enum nivel_risco
     }
 
-    ATENDIMENTO_PROCEDIMENTO {
+    PROCEDIMENTO_REALIZADO {
         uuid id_atendimento PK, FK
         uuid id_procedimento PK, FK
         integer quantidade
-        varchar resultado
+        integer tempo_real_minutos
+        text observacao
+        boolean faturado
     }
 
-    ESCALA_PLANTAO {
+    ESCALA {
         uuid id_escala PK
-        date data_escala
+        dia_semana_enum dia_semana
         turno_enum turno
         uuid id_unidade FK
-        uuid id_profissional FK
+        uuid id_residente FK
+        uuid id_preceptor FK
     }
 
-    UNIDADE_HOSPITALAR {
+    UNIDADE {
         uuid id_unidade PK
         varchar nome
-        varchar setor
-    }
-
-    INTERNACAO {
-        uuid id_internacao PK
-        timestamp data_entrada
-        timestamp data_saida
-        varchar leito
-        text motivo
-        uuid id_atendimento FK
+        varchar tipo
+        integer capacidade_leitos
     }
 
     %% --- Relacionamentos e Cardinalidades ---
@@ -96,13 +92,13 @@ erDiagram
     PRECEPTOR ||--o{ ATENDIMENTO : "supervisiona"
 
     %% Atendimento N:M Procedimento via Tabela Associativa
-    ATENDIMENTO ||--|{ ATENDIMENTO_PROCEDIMENTO : "possui"
-    PROCEDIMENTO ||--|{ ATENDIMENTO_PROCEDIMENTO : "e_realizado_em"
+    ATENDIMENTO ||--|{ PROCEDIMENTO_REALIZADO : "possui"
+    PROCEDIMENTO ||--|{ PROCEDIMENTO_REALIZADO : "e_realizado_em"
 
     %% Escalas e Unidades
-    PROFISSIONAL ||--o{ ESCALA_PLANTAO : "cumpre"
-    UNIDADE_HOSPITALAR ||--o{ ESCALA_PLANTAO : "sedia"
-
-    %% Internações (Geradas a partir de um Atendimento)
-    ATENDIMENTO ||--o| INTERNACAO : "pode_gerar"
-    
+    %% UNIQUE(id_unidade, dia_semana, turno, id_residente): um residente
+    %% só pode ter um preceptor supervisor por unidade/dia/turno.
+    RESIDENTE ||--o{ ESCALA : "cumpre"
+    PRECEPTOR ||--o{ ESCALA : "supervisiona"
+    UNIDADE ||--o{ ESCALA : "sedia"
+```
