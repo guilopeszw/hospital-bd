@@ -99,12 +99,17 @@ def listar_procedimentos_atendimento(id_atendimento: str):
         cur.execute("""
             SELECT
                 proc.nome              AS procedimento,
+                proc.nivel_risco,
                 pr.quantidade,
                 pr.tempo_real_minutos,
                 pr.observacao,
-                pr.faturado
+                (f.id_faturamento IS NOT NULL) AS faturado,
+                f.valor                AS valor_faturado
             FROM PROCEDIMENTO_REALIZADO pr
             JOIN PROCEDIMENTO proc ON pr.id_procedimento = proc.id_procedimento
+            LEFT JOIN FATURAMENTO f
+                   ON f.id_atendimento  = pr.id_atendimento
+                  AND f.id_procedimento = pr.id_procedimento
             WHERE pr.id_atendimento = %s
             ORDER BY proc.nome
         """, (id_atendimento,))
@@ -167,15 +172,20 @@ def remover_procedimento_realizado(id_atendimento: str, id_procedimento: str):
     cur = conn.cursor()
     try:
         cur.execute("""
-            DELETE FROM PROCEDIMENTO_REALIZADO
-            WHERE id_atendimento  = %s
-              AND id_procedimento = %s
-              AND faturado = FALSE
+            DELETE FROM PROCEDIMENTO_REALIZADO pr
+            WHERE pr.id_atendimento  = %s
+              AND pr.id_procedimento = %s
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM FATURAMENTO f
+                  WHERE f.id_atendimento  = pr.id_atendimento
+                    AND f.id_procedimento = pr.id_procedimento
+              )
         """, (id_atendimento, id_procedimento))
         conn.commit()
 
         if cur.rowcount == 0:
-            print("Remoção bloqueada: o procedimento já foi faturado ou não existe.")
+            print("Remoção bloqueada: o procedimento tem faturamento associado ou não existe.")
         else:
             print(" Procedimento realizado removido com sucesso.")
     except Exception as e:
@@ -197,12 +207,12 @@ def tempo_medio_por_residente():
                 p.nome                           AS residente,
                 ROUND(AVG(a.duracao_minutos), 1) AS tempo_medio_minutos,
                 COUNT(a.id_atendimento)          AS total_atendimentos
-            FROM ATENDIMENTO a
-            JOIN RESIDENTE    res ON a.id_residente = res.id_pessoa
-            JOIN PROFISSIONAL pf  ON res.id_pessoa  = pf.id_pessoa
-            JOIN PESSOA       p   ON pf.id_pessoa   = p.id_pessoa
-            GROUP BY p.nome
-            ORDER BY tempo_medio_minutos DESC
+            FROM RESIDENTE res
+            JOIN PROFISSIONAL pf ON pf.id_pessoa = res.id_pessoa
+            JOIN PESSOA       p  ON p.id_pessoa  = res.id_pessoa
+            LEFT JOIN ATENDIMENTO a ON a.id_residente = res.id_pessoa
+            GROUP BY res.id_pessoa, p.nome
+            ORDER BY tempo_medio_minutos DESC NULLS LAST, p.nome
         """)
         rows = cur.fetchall()
         for r in rows:
@@ -223,12 +233,12 @@ def ranking_residentes():
             SELECT
                 p.nome                      AS residente,
                 COUNT(a.id_atendimento)     AS total_atendimentos
-            FROM ATENDIMENTO a
-            JOIN RESIDENTE    res ON a.id_residente = res.id_pessoa
-            JOIN PROFISSIONAL pf  ON res.id_pessoa  = pf.id_pessoa
-            JOIN PESSOA       p   ON pf.id_pessoa   = p.id_pessoa
-            GROUP BY p.nome
-            ORDER BY total_atendimentos DESC
+            FROM RESIDENTE res
+            JOIN PROFISSIONAL pf ON pf.id_pessoa = res.id_pessoa
+            JOIN PESSOA       p  ON p.id_pessoa  = res.id_pessoa
+            LEFT JOIN ATENDIMENTO a ON a.id_residente = res.id_pessoa
+            GROUP BY res.id_pessoa, p.nome
+            ORDER BY total_atendimentos DESC, p.nome
         """)
         rows = cur.fetchall()
         print("\n Ranking de Residentes por Atendimentos:")
