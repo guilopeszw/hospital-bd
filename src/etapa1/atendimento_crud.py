@@ -207,12 +207,12 @@ def tempo_medio_por_residente():
                 p.nome                           AS residente,
                 ROUND(AVG(a.duracao_minutos), 1) AS tempo_medio_minutos,
                 COUNT(a.id_atendimento)          AS total_atendimentos
-            FROM ATENDIMENTO a
-            JOIN RESIDENTE    res ON a.id_residente = res.id_pessoa
-            JOIN PROFISSIONAL pf  ON res.id_pessoa  = pf.id_pessoa
-            JOIN PESSOA       p   ON pf.id_pessoa   = p.id_pessoa
-            GROUP BY p.nome
-            ORDER BY tempo_medio_minutos DESC
+            FROM RESIDENTE res
+            JOIN PROFISSIONAL pf ON pf.id_pessoa = res.id_pessoa
+            JOIN PESSOA       p  ON p.id_pessoa  = res.id_pessoa
+            LEFT JOIN ATENDIMENTO a ON a.id_residente = res.id_pessoa
+            GROUP BY res.id_pessoa, p.nome
+            ORDER BY tempo_medio_minutos DESC NULLS LAST, p.nome
         """)
         rows = cur.fetchall()
         for r in rows:
@@ -233,12 +233,12 @@ def ranking_residentes():
             SELECT
                 p.nome                      AS residente,
                 COUNT(a.id_atendimento)     AS total_atendimentos
-            FROM ATENDIMENTO a
-            JOIN RESIDENTE    res ON a.id_residente = res.id_pessoa
-            JOIN PROFISSIONAL pf  ON res.id_pessoa  = pf.id_pessoa
-            JOIN PESSOA       p   ON pf.id_pessoa   = p.id_pessoa
-            GROUP BY p.nome
-            ORDER BY total_atendimentos DESC
+            FROM RESIDENTE res
+            JOIN PROFISSIONAL pf ON pf.id_pessoa = res.id_pessoa
+            JOIN PESSOA       p  ON p.id_pessoa  = res.id_pessoa
+            LEFT JOIN ATENDIMENTO a ON a.id_residente = res.id_pessoa
+            GROUP BY res.id_pessoa, p.nome
+            ORDER BY total_atendimentos DESC, p.nome
         """)
         rows = cur.fetchall()
         print("\n Ranking de Residentes por Atendimentos:")
