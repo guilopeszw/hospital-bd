@@ -99,12 +99,17 @@ def listar_procedimentos_atendimento(id_atendimento: str):
         cur.execute("""
             SELECT
                 proc.nome              AS procedimento,
+                proc.nivel_risco,
                 pr.quantidade,
                 pr.tempo_real_minutos,
                 pr.observacao,
-                pr.faturado
+                (f.id_faturamento IS NOT NULL) AS faturado,
+                f.valor                AS valor_faturado
             FROM PROCEDIMENTO_REALIZADO pr
             JOIN PROCEDIMENTO proc ON pr.id_procedimento = proc.id_procedimento
+            LEFT JOIN FATURAMENTO f
+                   ON f.id_atendimento  = pr.id_atendimento
+                  AND f.id_procedimento = pr.id_procedimento
             WHERE pr.id_atendimento = %s
             ORDER BY proc.nome
         """, (id_atendimento,))
@@ -167,15 +172,20 @@ def remover_procedimento_realizado(id_atendimento: str, id_procedimento: str):
     cur = conn.cursor()
     try:
         cur.execute("""
-            DELETE FROM PROCEDIMENTO_REALIZADO
-            WHERE id_atendimento  = %s
-              AND id_procedimento = %s
-              AND faturado = FALSE
+            DELETE FROM PROCEDIMENTO_REALIZADO pr
+            WHERE pr.id_atendimento  = %s
+              AND pr.id_procedimento = %s
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM FATURAMENTO f
+                  WHERE f.id_atendimento  = pr.id_atendimento
+                    AND f.id_procedimento = pr.id_procedimento
+              )
         """, (id_atendimento, id_procedimento))
         conn.commit()
 
         if cur.rowcount == 0:
-            print("Remoção bloqueada: o procedimento já foi faturado ou não existe.")
+            print("Remoção bloqueada: o procedimento tem faturamento associado ou não existe.")
         else:
             print(" Procedimento realizado removido com sucesso.")
     except Exception as e:

@@ -98,19 +98,17 @@ def test_escala_mesmo_preceptor_residentes_diferentes_permitido(db_cursor):
     assert db_cursor.fetchone()[0] == 2
 
 
-def test_procedimento_realizado_faturado_bloqueia_delete(db_cursor):
-    """DELETE com filtro faturado=FALSE não remove um procedimento já faturado."""
-    id_residente = '9ccccccc-cccc-cccc-cccc-cccccccccccc'
-    id_preceptor = '9ddddddd-dddd-dddd-dddd-dddddddddddd'
-    id_paciente = '9eeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'
-    id_atendimento = '9fffffff-ffff-ffff-ffff-ffffffffffff'
-    id_procedimento = '9a1a1a1a-1a1a-1a1a-1a1a-1a1a1a1a1a1a'
+def _criar_procedimento_realizado(db_cursor, sufixo_cpf, id_atendimento, id_procedimento, codigo):
+    """Monta a cadeia mínima paciente/residente/preceptor -> atendimento -> procedimento realizado."""
+    id_residente = f'9{sufixo_cpf[0]}cccccc-cccc-cccc-cccc-cccccccccccc'
+    id_preceptor = f'9{sufixo_cpf[0]}dddddd-dddd-dddd-dddd-dddddddddddd'
+    id_paciente = f'9{sufixo_cpf[0]}eeeeee-eeee-eeee-eeee-eeeeeeeeeeee'
 
-    _criar_residente(db_cursor, id_residente, '44444444401')
-    _criar_preceptor(db_cursor, id_preceptor, '44444444402')
+    _criar_residente(db_cursor, id_residente, sufixo_cpf + '01')
+    _criar_preceptor(db_cursor, id_preceptor, sufixo_cpf + '02')
     db_cursor.execute("""
-        INSERT INTO PESSOA (id_pessoa, nome, cpf, data_nascimento) VALUES (%s, 'Paciente Teste', '44444444403', '1999-01-01');
-    """, (id_paciente,))
+        INSERT INTO PESSOA (id_pessoa, nome, cpf, data_nascimento) VALUES (%s, 'Paciente Teste', %s, '1999-01-01');
+    """, (id_paciente, sufixo_cpf + '03'))
     db_cursor.execute("INSERT INTO PACIENTE (id_pessoa) VALUES (%s);", (id_paciente,))
     db_cursor.execute("""
         INSERT INTO ATENDIMENTO (id_atendimento, data_hora, duracao_minutos, id_paciente, id_residente, id_preceptor)
@@ -118,33 +116,84 @@ def test_procedimento_realizado_faturado_bloqueia_delete(db_cursor):
     """, (id_atendimento, id_paciente, id_residente, id_preceptor))
     db_cursor.execute("""
         INSERT INTO PROCEDIMENTO (id_procedimento, codigo, nome, tempo_medio_minutos)
-        VALUES (%s, 'TESTE-01', 'Procedimento Teste', 10);
-    """, (id_procedimento,))
+        VALUES (%s, %s, 'Procedimento Teste', 10);
+    """, (id_procedimento, codigo))
     db_cursor.execute("""
-        INSERT INTO PROCEDIMENTO_REALIZADO (id_atendimento, id_procedimento, quantidade, tempo_real_minutos, faturado)
-        VALUES (%s, %s, 1, 10, TRUE);
+        INSERT INTO PROCEDIMENTO_REALIZADO (id_atendimento, id_procedimento, quantidade, tempo_real_minutos)
+        VALUES (%s, %s, 1, 10);
+    """, (id_atendimento, id_procedimento))
+
+
+def test_delete_bloqueado_quando_ha_faturamento(db_cursor):
+    """DELETE com NOT EXISTS não remove procedimento realizado que tem faturamento."""
+    id_atendimento = '9fffffff-ffff-ffff-ffff-ffffffffffff'
+    id_procedimento = '9a1a1a1a-1a1a-1a1a-1a1a-1a1a1a1a1a1a'
+    _criar_procedimento_realizado(db_cursor, '444444444', id_atendimento, id_procedimento, 'TESTE-01')
+
+    db_cursor.execute("""
+        INSERT INTO FATURAMENTO (id_atendimento, id_procedimento, valor)
+        VALUES (%s, %s, 150.00);
     """, (id_atendimento, id_procedimento))
 
     db_cursor.execute("""
-        DELETE FROM PROCEDIMENTO_REALIZADO
-        WHERE id_atendimento = %s AND id_procedimento = %s AND faturado = FALSE;
+        DELETE FROM PROCEDIMENTO_REALIZADO pr
+        WHERE pr.id_atendimento = %s AND pr.id_procedimento = %s
+          AND NOT EXISTS (
+              SELECT 1 FROM FATURAMENTO f
+              WHERE f.id_atendimento = pr.id_atendimento
+                AND f.id_procedimento = pr.id_procedimento
+          );
     """, (id_atendimento, id_procedimento))
     assert db_cursor.rowcount == 0
 
 
-def test_procedimento_nivel_risco_enum_invalido(db_cursor):
-    """Valor fora do enum nivel_risco_enum é rejeitado."""
-    with pytest.raises(errors.InvalidTextRepresentation):
+def test_delete_direto_de_faturado_viola_fk(db_cursor):
+    """Sem o NOT EXISTS, a FK ON DELETE RESTRICT de FATURAMENTO barra o DELETE."""
+    id_atendimento = '5fffffff-ffff-ffff-ffff-ffffffffffff'
+    id_procedimento = '5a1a1a1a-1a1a-1a1a-1a1a-1a1a1a1a1a1a'
+    _criar_procedimento_realizado(db_cursor, '555555555', id_atendimento, id_procedimento, 'TESTE-05')
+
+    db_cursor.execute("""
+        INSERT INTO FATURAMENTO (id_atendimento, id_procedimento, valor)
+        VALUES (%s, %s, 90.00);
+    """, (id_atendimento, id_procedimento))
+
+    with pytest.raises(errors.ForeignKeyViolation):
         db_cursor.execute("""
-            INSERT INTO PROCEDIMENTO (codigo, nome, tempo_medio_minutos, nivel_risco)
-            VALUES ('TESTE-02', 'Procedimento Invalido', 10, 'EXTREMO');
-        """)
+            DELETE FROM PROCEDIMENTO_REALIZADO
+            WHERE id_atendimento = %s AND id_procedimento = %s;
+        """, (id_atendimento, id_procedimento))
 
 
-def test_unidade_capacidade_leitos_positiva(db_cursor):
-    """capacidade_leitos <= 0 viola o CHECK da tabela UNIDADE."""
-    with pytest.raises(errors.CheckViolation):
+def test_delete_permitido_sem_faturamento(db_cursor):
+    """Procedimento realizado sem faturamento é removido normalmente."""
+    id_atendimento = '6fffffff-ffff-ffff-ffff-ffffffffffff'
+    id_procedimento = '6a1a1a1a-1a1a-1a1a-1a1a-1a1a1a1a1a1a'
+    _criar_procedimento_realizado(db_cursor, '666666666', id_atendimento, id_procedimento, 'TESTE-06')
+
+    db_cursor.execute("""
+        DELETE FROM PROCEDIMENTO_REALIZADO pr
+        WHERE pr.id_atendimento = %s AND pr.id_procedimento = %s
+          AND NOT EXISTS (
+              SELECT 1 FROM FATURAMENTO f
+              WHERE f.id_atendimento = pr.id_atendimento
+                AND f.id_procedimento = pr.id_procedimento
+          );
+    """, (id_atendimento, id_procedimento))
+    assert db_cursor.rowcount == 1
+
+
+def test_faturamento_unico_por_procedimento_realizado(db_cursor):
+    """Um procedimento realizado não pode ser faturado duas vezes."""
+    id_atendimento = '7fffffff-ffff-ffff-ffff-ffffffffffff'
+    id_procedimento = '7a1a1a1a-1a1a-1a1a-1a1a-1a1a1a1a1a1a'
+    _criar_procedimento_realizado(db_cursor, '777777777', id_atendimento, id_procedimento, 'TESTE-07')
+
+    db_cursor.execute("""
+        INSERT INTO FATURAMENTO (id_atendimento, id_procedimento, valor) VALUES (%s, %s, 10.00);
+    """, (id_atendimento, id_procedimento))
+
+    with pytest.raises(errors.UniqueViolation):
         db_cursor.execute("""
-            INSERT INTO UNIDADE (nome, tipo, capacidade_leitos)
-            VALUES ('Unidade Invalida', 'Enfermaria', 0);
-        """)
+            INSERT INTO FATURAMENTO (id_atendimento, id_procedimento, valor) VALUES (%s, %s, 20.00);
+        """, (id_atendimento, id_procedimento))

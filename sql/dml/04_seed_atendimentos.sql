@@ -42,14 +42,14 @@ INSERT INTO ATENDIMENTO (id_atendimento, data_hora, duracao_minutos, id_paciente
 -- ----------------------------------------
 -- PROCEDIMENTOS REALIZADOS
 -- ----------------------------------------
-INSERT INTO PROCEDIMENTO_REALIZADO (id_atendimento, id_procedimento, quantidade, tempo_real_minutos, observacao, faturado) VALUES
-('e1111111-1111-1111-1111-111111111111', 'd1111111-1111-1111-1111-111111111111', 1, 18, 'Paciente estável após sutura',              FALSE),
-('e1111111-1111-1111-1111-111111111111', 'd2222222-2222-2222-2222-222222222222', 1, 12, 'Coleta realizada com sucesso',              FALSE),
-('e2222222-2222-2222-2222-222222222222', 'd2222222-2222-2222-2222-222222222222', 1, 10, 'Coleta em veia periférica',                 TRUE),
-('e2222222-2222-2222-2222-222222222222', 'd3333333-3333-3333-3333-333333333333', 1, 16, 'Medicação aplicada sem intercorrências',    FALSE),
-('e3333333-3333-3333-3333-333333333333', 'd4444444-4444-4444-4444-444444444444', 1, 26, 'Radiografia com leve alteração',           FALSE),
-('e4444444-4444-4444-4444-444444444444', 'd1111111-1111-1111-1111-111111111111', 1, 22, 'Sutura com pontos separados',              FALSE),
-('e5555555-5555-5555-5555-555555555555', 'd5555555-5555-5555-5555-555555555555', 1, 14, 'Eletro normal',                             FALSE),
-('e6666666-6666-6666-6666-666666666666', 'd6666666-6666-6666-6666-666666666666', 1, 20, 'Curativo com gaze estéril',                FALSE),
-('e7777777-7777-7777-7777-777777777777', 'd7777777-7777-7777-7777-777777777777', 1,  9, 'Punção bem-sucedida',                      FALSE),
-('e8888888-8888-8888-8888-888888888888', 'd8888888-8888-8888-8888-888888888888', 1, 24, 'Nebulização com salbutamol',               FALSE);
+INSERT INTO PROCEDIMENTO_REALIZADO (id_atendimento, id_procedimento, quantidade, tempo_real_minutos, observacao) VALUES
+('e1111111-1111-1111-1111-111111111111', 'd1111111-1111-1111-1111-111111111111', 1, 18, 'Paciente estável após sutura'),
+('e1111111-1111-1111-1111-111111111111', 'd2222222-2222-2222-2222-222222222222', 1, 12, 'Coleta realizada com sucesso'),
+('e2222222-2222-2222-2222-222222222222', 'd2222222-2222-2222-2222-222222222222', 1, 10, 'Coleta em veia periférica'),
+('e2222222-2222-2222-2222-222222222222', 'd3333333-3333-3333-3333-333333333333', 1, 16, 'Medicação aplicada sem intercorrências'),
+('e3333333-3333-3333-3333-333333333333', 'd4444444-4444-4444-4444-444444444444', 1, 26, 'Radiografia com leve alteração'),
+('e4444444-4444-4444-4444-444444444444', 'd1111111-1111-1111-1111-111111111111', 1, 22, 'Sutura com pontos separados'),
+('e5555555-5555-5555-5555-555555555555', 'd5555555-5555-5555-5555-555555555555', 1, 14, 'Eletro normal'),
+('e6666666-6666-6666-6666-666666666666', 'd6666666-6666-6666-6666-666666666666', 1, 20, 'Curativo com gaze estéril'),
+('e7777777-7777-7777-7777-777777777777', 'd7777777-7777-7777-7777-777777777777', 1,  9, 'Punção bem-sucedida'),
+('e8888888-8888-8888-8888-888888888888', 'd8888888-8888-8888-8888-888888888888', 1, 24, 'Nebulização com salbutamol');

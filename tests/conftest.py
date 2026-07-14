@@ -27,6 +27,7 @@ def setup_database():
         "sql/ddl/09_procedimento_realizado.sql",
         "sql/ddl/10_unidade.sql",
         "sql/ddl/11_escala.sql",
+        "sql/ddl/12_faturamento.sql",
     ]
 
     try:
