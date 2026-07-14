@@ -197,3 +197,43 @@ def test_faturamento_unico_por_procedimento_realizado(db_cursor):
         db_cursor.execute("""
             INSERT INTO FATURAMENTO (id_atendimento, id_procedimento, valor) VALUES (%s, %s, 20.00);
         """, (id_atendimento, id_procedimento))
+
+
+def test_profissional_nao_pode_ter_dois_papeis(db_cursor):
+    """Um profissional com papel_atual='residente' não pode virar PRECEPTOR (FK composta)."""
+    id_pessoa = '8a111111-1111-1111-1111-111111111111'
+    _criar_residente(db_cursor, id_pessoa, '88888888801')
+
+    with pytest.raises(errors.ForeignKeyViolation):
+        db_cursor.execute("""
+            INSERT INTO PRECEPTOR (id_pessoa, titulacao) VALUES (%s, 'Doutor');
+        """, (id_pessoa,))
+
+
+def test_trocar_papel_com_subtipo_ativo_e_bloqueado(db_cursor):
+    """Trocar papel_atual sem remover a linha do papel antigo é barrado pelo CHECK."""
+    id_pessoa = '8b111111-1111-1111-1111-111111111111'
+    _criar_residente(db_cursor, id_pessoa, '88888888802')
+
+    with pytest.raises(errors.CheckViolation):
+        db_cursor.execute("""
+            UPDATE PROFISSIONAL SET papel_atual = 'preceptor' WHERE id_pessoa = %s;
+        """, (id_pessoa,))
+
+
+def test_procedimento_nivel_risco_enum_invalido(db_cursor):
+    """Valor fora do enum nivel_risco_enum é rejeitado."""
+    with pytest.raises(errors.InvalidTextRepresentation):
+        db_cursor.execute("""
+            INSERT INTO PROCEDIMENTO (codigo, nome, tempo_medio_minutos, nivel_risco)
+            VALUES ('TESTE-02', 'Procedimento Invalido', 10, 'EXTREMO');
+        """)
+
+
+def test_unidade_capacidade_leitos_positiva(db_cursor):
+    """capacidade_leitos <= 0 viola o CHECK da tabela UNIDADE."""
+    with pytest.raises(errors.CheckViolation):
+        db_cursor.execute("""
+            INSERT INTO UNIDADE (nome, tipo, capacidade_leitos)
+            VALUES ('Unidade Invalida', 'Enfermaria', 0);
+        """)
