@@ -284,7 +284,7 @@ hospital-bd/
 | Nome | GitHub |
 |------|--------|
 | Gabriela Zeviani | [@Gabi-Zeviani](https://github.com/Gabi-Zeviani) |
-| Guilherme Lopes | [@guilherme-lopes](https://github.com/guilherme-lopes) |
+| Guilherme Lopes | [@guilopeszw](https://github.com/guilopeszw) |
 | João Bosco Duarte | [@JoaoBoscoDuarte](https://github.com/JoaoBoscoDuarte) |
 
 ---
