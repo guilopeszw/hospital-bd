@@ -19,7 +19,9 @@ Chaves Primárias estão **sublinhadas** e Chaves Estrangeiras são indicadas po
 * **RESIDENTE** (__id_pessoa__\*, papel\*, ano_residencia)
   * `(id_pessoa, papel)` referencia PROFISSIONAL(id_pessoa, papel_atual); `CHECK (papel = 'residente')`
 
-> A coluna `papel` em PRECEPTOR/RESIDENTE não é redundância de dados: é o mecanismo declarativo que torna a especialização **disjunta** (um profissional exerce um único papel por vez, como exige o enunciado). Ela é constante por tabela — travada pelo CHECK — e não introduz dependência funcional nova, já que $\{id\_pessoa\} \rightarrow \{papel\}$ é trivialmente satisfeita pela chave. Ver detalhamento em `docs/der/cardinalidades.md`, seção 2.3.
+> A coluna `papel` em PRECEPTOR/RESIDENTE não é redundância de dados: é o mecanismo declarativo que torna a especialização **disjunta** (um profissional exerce um único papel por vez, como exige o enunciado). Ela é constante por tabela — travada pelo CHECK — e não introduz dependência funcional nova, já que $\{id\_pessoa\} \rightarrow \{papel\}$ é trivialmente satisfeita pela chave.
+
+Mecânica, em três peças: (1) `PROFISSIONAL` ganha `UNIQUE(id_pessoa, papel_atual)`, que serve de alvo de FK; (2) `PRECEPTOR` tem `CHECK (papel = 'preceptor')` e FK composta `(id_pessoa, papel) → PROFISSIONAL(id_pessoa, papel_atual)`; (3) `RESIDENTE` faz o simétrico com `'residente'`. Resultado: um profissional com `papel_atual = 'residente'` não consegue ter linha em `PRECEPTOR` — a FK não acha o par `(id_pessoa, 'preceptor')`. Sem trigger.
 
 ---
 

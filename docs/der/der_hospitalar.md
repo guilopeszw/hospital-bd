@@ -28,11 +28,13 @@ erDiagram
 
     PRECEPTOR {
         uuid id_pessoa PK, FK
+        papel_profissional_enum papel
         varchar titulacao
     }
 
     RESIDENTE {
         uuid id_pessoa PK, FK
+        papel_profissional_enum papel
         ano_residencia_enum ano_residencia
     }
 
@@ -60,7 +62,14 @@ erDiagram
         integer quantidade
         integer tempo_real_minutos
         text observacao
-        boolean faturado
+    }
+
+    FATURAMENTO {
+        uuid id_faturamento PK
+        uuid id_atendimento FK
+        uuid id_procedimento FK
+        numeric valor
+        date data_emissao
     }
 
     ESCALA {
@@ -80,24 +89,33 @@ erDiagram
     }
 
     %% --- Relacionamentos e Cardinalidades ---
-    %% Especialização Core (1:0..1 devido ao Joined Table)
+    %% Especialização Core (1:0..1 — joined table inheritance)
+    %% PROFISSIONAL -> PRECEPTOR/RESIDENTE é disjunta: a coluna `papel`, travada
+    %% por CHECK, + FK composta (id_pessoa, papel) -> PROFISSIONAL(id_pessoa,
+    %% papel_atual) impedem a mesma pessoa de ocupar os dois papéis ao mesmo tempo.
     PESSOA ||--o| PACIENTE : "pode ser"
     PESSOA ||--o| PROFISSIONAL : "pode ser"
-    PROFISSIONAL ||--o| PRECEPTOR : "pode ser"
-    PROFISSIONAL ||--o| RESIDENTE : "pode ser"
+    PROFISSIONAL ||--o| PRECEPTOR : "atua como"
+    PROFISSIONAL ||--o| RESIDENTE : "atua como"
 
     %% Relacionamentos de Atendimento
     PACIENTE ||--o{ ATENDIMENTO : "recebe"
     RESIDENTE ||--o{ ATENDIMENTO : "executa"
     PRECEPTOR ||--o{ ATENDIMENTO : "supervisiona"
 
-    %% Atendimento N:M Procedimento via Tabela Associativa
-    ATENDIMENTO ||--|{ PROCEDIMENTO_REALIZADO : "possui"
-    PROCEDIMENTO ||--|{ PROCEDIMENTO_REALIZADO : "e_realizado_em"
+    %% Atendimento N:M Procedimento via tabela associativa
+    %% (0,N) e não (1,N): um mínimo de 1 filho não é expressável por FK — exigiria trigger.
+    ATENDIMENTO ||--o{ PROCEDIMENTO_REALIZADO : "possui"
+    PROCEDIMENTO ||--o{ PROCEDIMENTO_REALIZADO : "e_realizado_em"
+
+    %% Faturamento: no máximo um por procedimento realizado (UNIQUE na FK composta).
+    %% A FK usa ON DELETE RESTRICT: o banco recusa apagar procedimento já faturado.
+    PROCEDIMENTO_REALIZADO ||--o| FATURAMENTO : "e_faturado_por"
 
     %% Escalas e Unidades
-    %% UNIQUE(id_unidade, dia_semana, turno, id_residente): um residente
-    %% só pode ter um preceptor supervisor por unidade/dia/turno.
+    %% UNIQUE(id_unidade, dia_semana, turno, id_residente): um residente só pode ter
+    %% um preceptor supervisor por unidade/dia/turno. id_preceptor fica fora da chave
+    %% de propósito — assim um mesmo preceptor pode supervisionar vários residentes.
     RESIDENTE ||--o{ ESCALA : "cumpre"
     PRECEPTOR ||--o{ ESCALA : "supervisiona"
     UNIDADE ||--o{ ESCALA : "sedia"

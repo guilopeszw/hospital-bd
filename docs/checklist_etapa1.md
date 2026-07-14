@@ -11,8 +11,8 @@
 
 ## 1. Modelagem
 
-- [x] DER completo (`docs/der/der_hospitalar.mmd` → `.png`), cobrindo Pessoa/Paciente/Profissional/Preceptor/Residente, Unidade, Atendimento, Procedimento, Procedimento_Realizado, Faturamento e Escala.
-- [x] **PDF de entrega**: `docs/der/DER_e_cardinalidades.pdf` — diagrama + justificativa de cardinalidade (mínimo, máximo e participação) de **cada** relacionamento e de cada especialização. Regerar com `./scripts/gerar_pdf_der.sh`.
+- [x] DER completo em Mermaid (`docs/der/der_hospitalar.md`), cobrindo Pessoa/Paciente/Profissional/Preceptor/Residente, Unidade, Atendimento, Procedimento, Procedimento_Realizado, Faturamento e Escala.
+- [ ] **PDF de entrega do DER**, com a justificativa de cardinalidade (mínimo, máximo e participação) de cada relacionamento e de cada especialização — pendência de entrega, a cargo do time.
 - [x] Modelo relacional completo (`docs/normalizacao.md`, seções 1 e 3).
 - [x] Normalização até 3FN justificada para todas as tabelas, incluindo a prova não-trivial de 2FN de `PROCEDIMENTO_REALIZADO` (chave composta).
 
