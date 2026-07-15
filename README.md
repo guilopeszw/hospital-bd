@@ -192,6 +192,15 @@ Os testes criam o próprio schema do zero (`DROP SCHEMA public CASCADE`) via fix
 
 ### 5. Usar a CLI
 
+Duas formas:
+
+**Interativa (menu)** — navega por teclado, não precisa decorar comandos:
+```bash
+source .venv/bin/activate
+python -m src.etapa1.cli_interactive
+```
+
+**Args (comandos diretos)** — um comando por execução:
 ```bash
 # Ativar virtualenv (se não estiver ativo)
 source .venv/bin/activate
@@ -260,7 +269,7 @@ python -m src.etapa1.atendimento_crud registrar-procedimento <id_atendimento> <i
 python -m src.etapa1.atendimento_crud faturar <id_atendimento> <id_procedimento> 130.50
 ```
 
-> **Dica:** Use `--help` para ver detalhes de cada subcomando:
+> **Dica:** Para um menu interativo, use `python -m src.etapa1.cli_interactive`. Use `--help` para ver detalhes dos subcomandos diretos:
 > ```bash
 > python -m src.etapa1.atendimento_crud --help
 > python -m src.etapa1.atendimento_crud inserir-atendimento --help

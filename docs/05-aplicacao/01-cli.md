@@ -2,13 +2,55 @@
 
 ## Visão Geral
 
-CLI implementada em Python puro com `argparse` (stdlib). Todas as operações CRUD e consultas analíticas da Etapa 1 são acessíveis via terminal.
+Duas interfaces disponíveis:
 
-**Arquivo:** [`../../src/etapa1/atendimento_crud.py`](../../src/etapa1/atendimento_crud.py)
+| Modo | Descrição | Como Rodar |
+|------|-----------|------------|
+| **Interativo (menu)** | Tela cheia com menu numerado, input validado e tabelas formatadas | `python -m src.etapa1.cli_interactive` |
+| **Args (comandos diretos)** | CLI clássica via `argparse`, um comando por execução | `python -m src.etapa1.atendimento_crud <comando> [args]` |
+
+**Arquivos:**
+- [`../../src/etapa1/cli_interactive.py`](../../src/etapa1/cli_interactive.py) — modo interativo
+- [`../../src/etapa1/atendimento_crud.py`](../../src/etapa1/atendimento_crud.py) — modo args
 
 ---
 
-## Uso Básico
+## Modo Interativo (Menu)
+
+Menu numerado com todas as 10 operações. Navega por teclado sem precisar decorar comandos.
+
+```bash
+python -m src.etapa1.cli_interactive
+```
+
+```
+  ╔════════════════════════════════════════════════════════════════╗
+  ║     HOSPITAL UNIVERSITÁRIO — Dra. Yuska Maritan Brito        ║
+  ║           SISTEMA DE GESTÃO HOSPITALAR — Etapa 1             ║
+  ╠════════════════════════════════════════════════════════════════╣
+  ║  1. Ranking de Residentes                                      ║
+  ║  2. Tempo Médio por Residente                                  ║
+  ║  3. Plantões por Unidade (mês corrente)                        ║
+  ║  4. Pacientes sem Procedimento de Alto Risco                   ║
+  ║  5. Listar Atendimentos de um Paciente                         ║
+  ║  6. Listar Procedimentos de um Atendimento                     ║
+  ║  7. Preceptores com +5 Atendimentos no Mês                     ║
+  ║  8. Remover Procedimento Realizado                             ║
+  ║  9. Atualizar Dados de Paciente                                ║
+  ║  10. Inserir Novo Atendimento                                  ║
+  ║  0. Sair                                                       ║
+  ╚════════════════════════════════════════════════════════════════╝
+
+  Opção:
+```
+
+Seleciona pelo número, insere dados quando solicitado, vê resultado em tabela formatada, volta ao menu automaticamente.
+
+---
+
+## Modo Args (Comandos Diretos)
+
+CLI clássica, um comando por execução. Ideal para scripts e automação.
 
 ```bash
 python -m src.etapa1.atendimento_crud <comando> [argumentos]
