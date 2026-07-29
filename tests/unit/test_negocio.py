@@ -39,16 +39,18 @@ def _criar_unidade(cur, id_unidade):
 
 def test_atendimento_fk_paciente_inexistente(db_cursor):
     """FK de ATENDIMENTO barra id_paciente que não existe em PACIENTE."""
+    id_unidade = '90000000-0000-0000-0000-000000000000'
     id_residente = '91111111-1111-1111-1111-111111111111'
     id_preceptor = '92222222-2222-2222-2222-222222222222'
+    _criar_unidade(db_cursor, id_unidade)
     _criar_residente(db_cursor, id_residente, '11111111101')
     _criar_preceptor(db_cursor, id_preceptor, '11111111102')
 
     with pytest.raises(errors.ForeignKeyViolation):
         db_cursor.execute("""
-            INSERT INTO ATENDIMENTO (data_hora, duracao_minutos, id_paciente, id_residente, id_preceptor)
-            VALUES ('2025-01-01 10:00:00', 30, '93333333-3333-3333-3333-333333333333', %s, %s);
-        """, (id_residente, id_preceptor))
+            INSERT INTO ATENDIMENTO (data_hora, duracao_minutos, id_paciente, id_residente, id_preceptor, id_unidade)
+            VALUES ('2025-01-01 10:00:00', 30, '93333333-3333-3333-3333-333333333333', %s, %s, %s);
+        """, (id_residente, id_preceptor, id_unidade))
 
 
 def test_escala_unique_constraint(db_cursor):
@@ -100,10 +102,12 @@ def test_escala_mesmo_preceptor_residentes_diferentes_permitido(db_cursor):
 
 def _criar_procedimento_realizado(db_cursor, sufixo_cpf, id_atendimento, id_procedimento, codigo):
     """Monta a cadeia mínima paciente/residente/preceptor -> atendimento -> procedimento realizado."""
+    id_unidade = f'9{sufixo_cpf[0]}bbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
     id_residente = f'9{sufixo_cpf[0]}cccccc-cccc-cccc-cccc-cccccccccccc'
     id_preceptor = f'9{sufixo_cpf[0]}dddddd-dddd-dddd-dddd-dddddddddddd'
     id_paciente = f'9{sufixo_cpf[0]}eeeeee-eeee-eeee-eeee-eeeeeeeeeeee'
 
+    _criar_unidade(db_cursor, id_unidade)
     _criar_residente(db_cursor, id_residente, sufixo_cpf + '01')
     _criar_preceptor(db_cursor, id_preceptor, sufixo_cpf + '02')
     db_cursor.execute("""
@@ -111,16 +115,16 @@ def _criar_procedimento_realizado(db_cursor, sufixo_cpf, id_atendimento, id_proc
     """, (id_paciente, sufixo_cpf + '03'))
     db_cursor.execute("INSERT INTO PACIENTE (id_pessoa) VALUES (%s);", (id_paciente,))
     db_cursor.execute("""
-        INSERT INTO ATENDIMENTO (id_atendimento, data_hora, duracao_minutos, id_paciente, id_residente, id_preceptor)
-        VALUES (%s, '2025-02-01 08:00:00', 20, %s, %s, %s);
-    """, (id_atendimento, id_paciente, id_residente, id_preceptor))
+        INSERT INTO ATENDIMENTO (id_atendimento, data_hora, duracao_minutos, id_paciente, id_residente, id_preceptor, id_unidade)
+        VALUES (%s, '2025-02-01 08:00:00', 20, %s, %s, %s, %s);
+    """, (id_atendimento, id_paciente, id_residente, id_preceptor, id_unidade))
     db_cursor.execute("""
         INSERT INTO PROCEDIMENTO (id_procedimento, codigo, nome, tempo_medio_minutos)
         VALUES (%s, %s, 'Procedimento Teste', 10);
     """, (id_procedimento, codigo))
     db_cursor.execute("""
-        INSERT INTO PROCEDIMENTO_REALIZADO (id_atendimento, id_procedimento, quantidade, tempo_real_minutos)
-        VALUES (%s, %s, 1, 10);
+        INSERT INTO PROCEDIMENTO_REALIZADO (id_atendimento, id_procedimento, quantidade, tempo_real_minutos, data_hora_inicio)
+        VALUES (%s, %s, 1, 10, '2025-02-01 08:05:00');
     """, (id_atendimento, id_procedimento))
 
 

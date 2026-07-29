@@ -9,5 +9,6 @@ CREATE TABLE PROCEDIMENTO (
     codigo          VARCHAR(20)  NOT NULL UNIQUE,
     nome            VARCHAR(100) NOT NULL,
     tempo_medio_minutos INT      NOT NULL CHECK (tempo_medio_minutos > 0),
-    nivel_risco     nivel_risco_enum NOT NULL DEFAULT 'BAIXO'
+    nivel_risco     nivel_risco_enum NOT NULL DEFAULT 'BAIXO',
+    media_tempo_procedimento NUMERIC(10,2)
 );

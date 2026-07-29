@@ -23,11 +23,12 @@ def setup_database():
         "sql/ddl/05_preceptor.sql",
         "sql/ddl/06_residente.sql",
         "sql/ddl/07_procedimento.sql",
-        "sql/ddl/08_atendimento.sql",
-        "sql/ddl/09_procedimento_realizado.sql",
-        "sql/ddl/10_unidade.sql",
+        "sql/ddl/08_unidade.sql",
+        "sql/ddl/09_atendimento.sql",
+        "sql/ddl/10_procedimento_realizado.sql",
         "sql/ddl/11_escala.sql",
         "sql/ddl/12_faturamento.sql",
+        "sql/ddl/13_auditoria_atendimento.sql",
     ]
 
     try:

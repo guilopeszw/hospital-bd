@@ -15,8 +15,8 @@
 | 01 | `01_seed_pacientes.sql` | `PESSOA`, `PACIENTE` | 5 pacientes | Mínimo 5 |
 | 02 | `02_seed_preceptores.sql` | `PESSOA`, `PROFISSIONAL`, `PRECEPTOR` | 5 preceptores | Mínimo 5 |
 | 03 | `03_seed_residentes.sql` | `PESSOA`, `PROFISSIONAL`, `RESIDENTE` | 5 residentes | Mínimo 5 |
-| 04 | `04_seed_atendimentos.sql` | `PROCEDIMENTO`, `ATENDIMENTO`, `PROCEDIMENTO_REALIZADO` | 10 procedimentos, 10 atendimentos, 10+ procedimentos realizados | Mínimo 10 atendimentos |
-| 05 | `05_seed_unidades.sql` | `UNIDADE` | 3 unidades | Mínimo 3 |
+| 04 | `04_seed_unidades.sql` | `UNIDADE` | 3 unidades | Mínimo 3 |
+| 05 | `05_seed_atendimentos.sql` | `PROCEDIMENTO`, `ATENDIMENTO`, `PROCEDIMENTO_REALIZADO` | 10 procedimentos, 10 atendimentos, 10+ procedimentos realizados | Mínimo 10 atendimentos |
 | 06 | `06_seed_escalas.sql` | `ESCALA` | 8 escalas | — |
 | 07 | `07_seed_faturamento.sql` | `FATURAMENTO` | 3 registros | Teste de remoção bloqueada |
 
@@ -54,8 +54,8 @@ A ordem de inserção respeita as FKs:
 
 1. Pessoas base (pacientes, preceptores, residentes)
 2. Profissionais e subclasses
-3. Procedimentos (independentes)
-4. Atendimentos (dependentes de paciente, residente, preceptor)
-5. Procedimentos realizados (dependentes de atendimento e procedimento)
-6. Unidades (independentes)
+3. Unidades (independentes)
+4. Procedimentos (independentes)
+5. Atendimentos (dependentes de paciente, residente, preceptor, unidade)
+6. Procedimentos realizados (dependentes de atendimento e procedimento)
 7. Escalas e faturamento (dependentes de tudo anterior)

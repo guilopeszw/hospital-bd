@@ -14,10 +14,11 @@
 -- ============================================================
 
 CREATE TABLE PROCEDIMENTO_REALIZADO (
-    id_atendimento      UUID    NOT NULL,
-    id_procedimento     UUID    NOT NULL,
-    quantidade          INT     NOT NULL CHECK (quantidade > 0),
-    tempo_real_minutos  INT     NOT NULL CHECK (tempo_real_minutos > 0),
+    id_atendimento      UUID      NOT NULL,
+    id_procedimento     UUID      NOT NULL,
+    quantidade          INT       NOT NULL CHECK (quantidade > 0),
+    tempo_real_minutos  INT       NOT NULL CHECK (tempo_real_minutos > 0),
+    data_hora_inicio    TIMESTAMP NOT NULL,
     observacao          TEXT,
 
     PRIMARY KEY (id_atendimento, id_procedimento),
