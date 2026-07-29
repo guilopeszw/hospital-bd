@@ -15,6 +15,7 @@ CREATE TABLE ATENDIMENTO (
     id_paciente     UUID      NOT NULL,
     id_residente    UUID      NOT NULL,
     id_preceptor    UUID      NOT NULL,
+    id_unidade      UUID      NOT NULL,
 
     CONSTRAINT fk_atend_paciente
         FOREIGN KEY (id_paciente)  REFERENCES PACIENTE(id_pessoa)   ON DELETE RESTRICT,
@@ -23,5 +24,8 @@ CREATE TABLE ATENDIMENTO (
         FOREIGN KEY (id_residente) REFERENCES RESIDENTE(id_pessoa)  ON DELETE RESTRICT,
 
     CONSTRAINT fk_atend_preceptor
-        FOREIGN KEY (id_preceptor) REFERENCES PRECEPTOR(id_pessoa)  ON DELETE RESTRICT
+        FOREIGN KEY (id_preceptor) REFERENCES PRECEPTOR(id_pessoa)  ON DELETE RESTRICT,
+
+    CONSTRAINT fk_atend_unidade
+        FOREIGN KEY (id_unidade)   REFERENCES UNIDADE(id_unidade)   ON DELETE RESTRICT
 );

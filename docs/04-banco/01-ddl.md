@@ -2,7 +2,7 @@
 
 ## Visão Geral
 
-12 arquivos DDL numerados por ordem de dependência. Criam todo o schema do hospital: enums, tabelas base, hierarquia de pessoas, tabelas de negócio e faturamento.
+13 arquivos DDL numerados por ordem de dependência. Criam todo o schema do hospital: enums, tabelas base, hierarquia de pessoas, tabelas de negócio, faturamento e auditoria.
 
 **Localização:** [`../../sql/ddl/`](../../sql/ddl/)
 
@@ -19,11 +19,12 @@
 | 05 | `05_preceptor.sql` | `PRECEPTOR` | `PROFISSIONAL` |
 | 06 | `06_residente.sql` | `RESIDENTE` | `PROFISSIONAL` |
 | 07 | `07_procedimento.sql` | `PROCEDIMENTO` | — |
-| 08 | `08_atendimento.sql` | `ATENDIMENTO` | `PACIENTE`, `RESIDENTE`, `PRECEPTOR` |
-| 09 | `09_procedimento_realizado.sql` | `PROCEDIMENTO_REALIZADO` | `ATENDIMENTO`, `PROCEDIMENTO` |
-| 10 | `10_unidade.sql` | `UNIDADE` | — |
+| 08 | `08_unidade.sql` | `UNIDADE` | — |
+| 09 | `09_atendimento.sql` | `ATENDIMENTO` | `PACIENTE`, `RESIDENTE`, `PRECEPTOR`, `UNIDADE` |
+| 10 | `10_procedimento_realizado.sql` | `PROCEDIMENTO_REALIZADO` | `ATENDIMENTO`, `PROCEDIMENTO` |
 | 11 | `11_escala.sql` | `ESCALA` | `UNIDADE`, `RESIDENTE`, `PRECEPTOR` |
 | 12 | `12_faturamento.sql` | `FATURAMENTO` | `PROCEDIMENTO_REALIZADO` |
+| 13 | `13_auditoria_atendimento.sql` | `AUDITORIA_ATENDIMENTO` | — (sem FK, guarda `id_atendimento` cru) |
 
 ---
 
