@@ -36,6 +36,20 @@ function fmtMoeda(v) {
   return Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+// Escapa qualquer string vinda da API antes de ir para innerHTML.
+// Dados de paciente (nome, alergias...) são gravados sem sanitização
+// no banco; sem isso, um nome como <img onerror=...> executaria ao
+// renderizar a tabela (XSS armazenado).
+function esc(s) {
+  if (s == null) return "";
+  return String(s)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 function idChip(id) {
   if (!id) return "";
   return `<span class="id-chip">${String(id).slice(0, 8)}</span>`;
@@ -43,7 +57,7 @@ function idChip(id) {
 
 function riscoBadge(nivel) {
   const classe = { BAIXO: "badge--baixo", MEDIO: "badge--medio", ALTO: "badge--alto" }[nivel] || "";
-  return `<span class="badge ${classe}">${nivel}</span>`;
+  return `<span class="badge ${classe}">${esc(nivel)}</span>`;
 }
 
 function papelBadge(papel) {
@@ -146,15 +160,15 @@ async function carregarVisaoGeral() {
     document.getElementById("stat-grid").innerHTML = `
       <div class="stat-card">
         <p class="stat-card__label">Pacientes cadastrados</p>
-        <p class="stat-card__value">${s.total_pacientes}</p>
+        <p class="stat-card__value">${esc(s.total_pacientes)}</p>
       </div>
       <div class="stat-card">
         <p class="stat-card__label">Atendimentos no mês</p>
-        <p class="stat-card__value">${s.atendimentos_mes}</p>
+        <p class="stat-card__value">${esc(s.atendimentos_mes)}</p>
       </div>
       <div class="stat-card stat-card--amber">
         <p class="stat-card__label">Plantões hoje</p>
-        <p class="stat-card__value">${s.plantoes_hoje}</p>
+        <p class="stat-card__value">${esc(s.plantoes_hoje)}</p>
       </div>
       <div class="stat-card stat-card--coral">
         <p class="stat-card__label">Faturamento do mês</p>
@@ -172,9 +186,9 @@ async function carregarVisaoGeral() {
       at,
       (a) => `<tr>
         <td>${fmtData(a.data_hora)}</td>
-        <td>${a.paciente}</td>
-        <td>${a.residente}</td>
-        <td>${a.preceptor}</td>
+        <td>${esc(a.paciente)}</td>
+        <td>${esc(a.residente)}</td>
+        <td>${esc(a.preceptor)}</td>
       </tr>`
     );
   } catch {
@@ -194,11 +208,11 @@ async function carregarPacientes(busca = "") {
       ["Nome", "CPF", "Convênio", "Tipo sanguíneo", "Alergias", "ID"],
       pacientes,
       (p) => `<tr>
-        <td>${p.nome}</td>
-        <td>${p.cpf}</td>
-        <td>${p.num_convenio || "—"}</td>
-        <td>${p.grupo_sanguineo || "—"}</td>
-        <td>${p.alergias || "—"}</td>
+        <td>${esc(p.nome)}</td>
+        <td>${esc(p.cpf)}</td>
+        <td>${esc(p.num_convenio || "—")}</td>
+        <td>${esc(p.grupo_sanguineo || "—")}</td>
+        <td>${esc(p.alergias || "—")}</td>
         <td>${idChip(p.id_pessoa)}</td>
       </tr>`
     );
@@ -224,11 +238,11 @@ async function carregarProfissionais() {
       ["Nome", "Papel", "CRM", "Especialidade", "Detalhe"],
       prof,
       (p) => `<tr>
-        <td>${p.nome}</td>
+        <td>${esc(p.nome)}</td>
         <td>${papelBadge(p.papel_atual)}</td>
-        <td>${p.crm}</td>
-        <td>${p.especialidade}</td>
-        <td>${p.papel_atual === "preceptor" ? (p.titulacao || "—") : (p.ano_residencia || "—")}</td>
+        <td>${esc(p.crm)}</td>
+        <td>${esc(p.especialidade)}</td>
+        <td>${esc(p.papel_atual === "preceptor" ? (p.titulacao || "—") : (p.ano_residencia || "—"))}</td>
       </tr>`
     );
   } catch {
@@ -249,10 +263,10 @@ async function carregarAtendimentos() {
       at,
       (a) => `<tr>
         <td>${fmtData(a.data_hora)}</td>
-        <td>${a.paciente}</td>
-        <td>${a.residente}</td>
-        <td>${a.preceptor}</td>
-        <td>${a.duracao_minutos} min</td>
+        <td>${esc(a.paciente)}</td>
+        <td>${esc(a.residente)}</td>
+        <td>${esc(a.preceptor)}</td>
+        <td>${esc(a.duracao_minutos)} min</td>
         <td>${idChip(a.id_atendimento)}</td>
       </tr>`
     );
@@ -276,11 +290,11 @@ async function carregarEscalas() {
       ["Unidade", "Dia", "Turno", "Residente", "Preceptor"],
       esc,
       (e) => `<tr>
-        <td>${e.unidade}</td>
-        <td>${DIA_LEGIVEL[e.dia_semana] || e.dia_semana}</td>
-        <td>${TURNO_LEGIVEL[e.turno] || e.turno}</td>
-        <td>${e.residente}</td>
-        <td>${e.preceptor}</td>
+        <td>${esc(e.unidade)}</td>
+        <td>${esc(DIA_LEGIVEL[e.dia_semana] || e.dia_semana)}</td>
+        <td>${esc(TURNO_LEGIVEL[e.turno] || e.turno)}</td>
+        <td>${esc(e.residente)}</td>
+        <td>${esc(e.preceptor)}</td>
       </tr>`
     );
   } catch {
@@ -297,7 +311,7 @@ async function carregarIndicadores() {
       document.getElementById("ranking-residentes").innerHTML = tabela(
         ["Residente", "Ano", "Atendimentos"],
         rows,
-        (r) => `<tr><td>${r.residente}</td><td>${r.ano_residencia}</td><td><strong>${r.total_atendimentos}</strong></td></tr>`
+        (r) => `<tr><td>${esc(r.residente)}</td><td>${esc(r.ano_residencia)}</td><td><strong>${esc(r.total_atendimentos)}</strong></td></tr>`
       );
     })
     .catch(() => { document.getElementById("ranking-residentes").innerHTML = `<div class="empty">Sem dados.</div>`; });
@@ -307,7 +321,7 @@ async function carregarIndicadores() {
       document.getElementById("tempo-medio").innerHTML = tabela(
         ["Residente", "Especialidade", "Tempo médio"],
         rows,
-        (r) => `<tr><td>${r.residente}</td><td>${r.especialidade}</td><td>${r.tempo_medio_minutos != null ? r.tempo_medio_minutos + " min" : "—"}</td></tr>`
+        (r) => `<tr><td>${esc(r.residente)}</td><td>${esc(r.especialidade)}</td><td>${r.tempo_medio_minutos != null ? esc(r.tempo_medio_minutos) + " min" : "—"}</td></tr>`
       );
     })
     .catch(() => { document.getElementById("tempo-medio").innerHTML = `<div class="empty">Sem dados.</div>`; });
@@ -317,7 +331,7 @@ async function carregarIndicadores() {
       document.getElementById("plantoes-mes").innerHTML = tabela(
         ["Unidade", "Residente", "Plantões"],
         rows,
-        (r) => `<tr><td>${r.unidade}</td><td>${r.residente}</td><td><strong>${r.total_plantoes_no_mes}</strong></td></tr>`
+        (r) => `<tr><td>${esc(r.unidade)}</td><td>${esc(r.residente)}</td><td><strong>${esc(r.total_plantoes_no_mes)}</strong></td></tr>`
       );
     })
     .catch(() => { document.getElementById("plantoes-mes").innerHTML = `<div class="empty">Sem dados.</div>`; });
@@ -327,7 +341,7 @@ async function carregarIndicadores() {
       document.getElementById("sem-risco-alto").innerHTML = tabela(
         ["Paciente", "Convênio"],
         rows,
-        (r) => `<tr><td>${r.paciente}</td><td>${r.num_convenio || "—"}</td></tr>`
+        (r) => `<tr><td>${esc(r.paciente)}</td><td>${esc(r.num_convenio || "—")}</td></tr>`
       );
     })
     .catch(() => { document.getElementById("sem-risco-alto").innerHTML = `<div class="empty">Sem dados.</div>`; });
@@ -374,9 +388,9 @@ document.getElementById("btn-novo-atendimento").addEventListener("click", async 
     const residentes = profissionais.filter((p) => p.papel_atual === "residente");
     const preceptores = profissionais.filter((p) => p.papel_atual === "preceptor");
 
-    selP.innerHTML = pacientes.map((p) => `<option value="${p.id_pessoa}">${p.nome}</option>`).join("");
-    selR.innerHTML = residentes.map((p) => `<option value="${p.id_pessoa}">${p.nome} (${p.ano_residencia})</option>`).join("");
-    selPre.innerHTML = preceptores.map((p) => `<option value="${p.id_pessoa}">${p.nome}</option>`).join("");
+    selP.innerHTML = pacientes.map((p) => `<option value="${esc(p.id_pessoa)}">${esc(p.nome)}</option>`).join("");
+    selR.innerHTML = residentes.map((p) => `<option value="${esc(p.id_pessoa)}">${esc(p.nome)} (${esc(p.ano_residencia)})</option>`).join("");
+    selPre.innerHTML = preceptores.map((p) => `<option value="${esc(p.id_pessoa)}">${esc(p.nome)}</option>`).join("");
   } catch {
     document.getElementById("erro-atendimento").textContent = "Não foi possível carregar pacientes/equipe.";
   }
