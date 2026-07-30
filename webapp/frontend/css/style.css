@@ -36,7 +36,7 @@ html, body {
 
 button, input, select, textarea { font-family: inherit; font-size: inherit; }
 
-//layout shell
+/*layout shell*/
 
 .app {
   display: grid;
@@ -44,7 +44,7 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
   min-height: 100vh;
 }
 
-//sidebar
+/*sidebar*/
 
 .sidebar {
   background: var(--ink);
