@@ -3,7 +3,8 @@ Como rodar:
     cd webapp/api
     pip install -r requirements.txt
     python app.py
-    # API sobe em http://localhost:5000
+    # API sobe em http://localhost:5055
+    # (porta 5055 e não 5000: no macOS o AirPlay ocupa a 5000)
 """
 
 import os
@@ -400,4 +401,7 @@ def health():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    # Porta 8000 (não 5000): no macOS o AirPlay/Control Center ocupa a
+    # 5000 e responde 403, impedindo o front-end de alcançar a API.
+    # Sobrescreva com a env PORT se precisar.
+    app.run(debug=True, port=int(os.getenv("PORT", "5055")))
