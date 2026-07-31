@@ -382,18 +382,22 @@ document.getElementById("btn-novo-atendimento").addEventListener("click", async 
   const selP = document.getElementById("select-paciente");
   const selR = document.getElementById("select-residente");
   const selPre = document.getElementById("select-preceptor");
-  selP.innerHTML = selR.innerHTML = selPre.innerHTML = `<option>Carregando…</option>`;
+  const selU = document.getElementById("select-unidade");
+  selP.innerHTML = selR.innerHTML = selPre.innerHTML = selU.innerHTML = `<option>Carregando…</option>`;
 
   try {
-    const [pacientes, profissionais] = await Promise.all([apiGet("/pacientes"), apiGet("/profissionais")]);
+    const [pacientes, profissionais, unidades] = await Promise.all([
+      apiGet("/pacientes"), apiGet("/profissionais"), apiGet("/unidades"),
+    ]);
     const residentes = profissionais.filter((p) => p.papel_atual === "residente");
     const preceptores = profissionais.filter((p) => p.papel_atual === "preceptor");
 
     selP.innerHTML = pacientes.map((p) => `<option value="${esc(p.id_pessoa)}">${esc(p.nome)}</option>`).join("");
     selR.innerHTML = residentes.map((p) => `<option value="${esc(p.id_pessoa)}">${esc(p.nome)} (${esc(p.ano_residencia)})</option>`).join("");
     selPre.innerHTML = preceptores.map((p) => `<option value="${esc(p.id_pessoa)}">${esc(p.nome)}</option>`).join("");
+    selU.innerHTML = unidades.map((u) => `<option value="${esc(u.id_unidade)}">${esc(u.nome)}</option>`).join("");
   } catch {
-    document.getElementById("erro-atendimento").textContent = "Não foi possível carregar pacientes/equipe.";
+    document.getElementById("erro-atendimento").textContent = "Não foi possível carregar pacientes/equipe/unidades.";
   }
 });
 

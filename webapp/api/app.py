@@ -238,7 +238,7 @@ def listar_atendimentos():
 @app.route("/api/atendimentos", methods=["POST"])
 def criar_atendimento():
     dados = request.get_json(force=True)
-    obrigatorios = ["data_hora", "duracao_minutos", "id_paciente", "id_residente", "id_preceptor"]
+    obrigatorios = ["data_hora", "duracao_minutos", "id_paciente", "id_residente", "id_preceptor", "id_unidade"]
     faltando = [c for c in obrigatorios if not dados.get(c)]
     if faltando:
         return api_error(f"Campos obrigatórios ausentes: {', '.join(faltando)}")
@@ -247,15 +247,18 @@ def criar_atendimento():
         existe = query(f"SELECT 1 FROM {tabela} WHERE id_pessoa = %s", (dados[campo],), one=True)
         if not existe:
             return api_error(f"{tabela.capitalize()} não encontrado.", 404)
+    if not query("SELECT 1 FROM UNIDADE WHERE id_unidade = %s", (dados["id_unidade"],), one=True):
+        return api_error("Unidade não encontrada.", 404)
 
     try:
         resultado = execute(
             """
-            INSERT INTO ATENDIMENTO (data_hora, duracao_minutos, id_paciente, id_residente, id_preceptor)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO ATENDIMENTO (data_hora, duracao_minutos, id_paciente, id_residente, id_preceptor, id_unidade)
+            VALUES (%s, %s, %s, %s, %s, %s)
             RETURNING id_atendimento
             """,
-            (dados["data_hora"], dados["duracao_minutos"], dados["id_paciente"], dados["id_residente"], dados["id_preceptor"]),
+            (dados["data_hora"], dados["duracao_minutos"], dados["id_paciente"],
+             dados["id_residente"], dados["id_preceptor"], dados["id_unidade"]),
             returning=True,
         )
         return jsonify(resultado), 201

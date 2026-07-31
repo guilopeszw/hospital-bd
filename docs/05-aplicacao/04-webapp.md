@@ -75,6 +75,6 @@ parametrizadas, sem risco de SQLi).
 - **SQL parametrizado** (`%s` via psycopg2) em todas as rotas — sem concatenação.
 - **Feedback de UI**: `scale(0.96)` no `:active` dos botões, transições
   específicas (nunca `transition: all`), `prefers-reduced-motion` respeitado.
-- **Schema:** a API acompanha o schema da branch `main` (Etapa 1). Se `main` for
-  reconciliada com `main-parte2`, o `POST /atendimentos` precisará passar a
-  informar `id_unidade` (coluna `NOT NULL` na Etapa 2).
+- **Schema:** a API acompanha o schema unificado (Etapa 1 + Etapa 2). O
+  `POST /atendimentos` exige `id_unidade` (coluna `NOT NULL`), e o formulário do
+  painel tem um select de unidade populado por `GET /api/unidades`.
