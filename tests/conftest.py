@@ -29,6 +29,7 @@ def setup_database():
         "sql/ddl/11_escala.sql",
         "sql/ddl/12_faturamento.sql",
         "sql/ddl/13_auditoria_atendimento.sql",
+        "sql/ddl/14_internacao.sql",
     ]
 
     try:
