@@ -39,7 +39,7 @@ DATABASE_URL="dbname=hospital_db user=postgres password=password host=localhost 
 | GET | `/api/health` | status do banco (usado pelo indicador da sidebar) |
 | GET | `/api/dashboard/summary` | contadores do painel |
 | GET/POST | `/api/pacientes` | lista / cadastra paciente |
-| GET | `/api/pacientes/<id>/atendimentos` | atendimentos de um paciente |
+| GET | `/api/pacientes/<id_paciente>/atendimentos` | atendimentos de um paciente |
 | GET | `/api/profissionais` | residentes + preceptores |
 | GET/POST | `/api/atendimentos` | lista / registra atendimento |
 | GET | `/api/unidades`, `/api/procedimentos`, `/api/escalas` | listagens de apoio |
