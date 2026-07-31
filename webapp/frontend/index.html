@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel · HU Dra. Yuska Maritan Brito</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!--  SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <svg class="brand__mark" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M16 3 L27 8 V16 C27 23 22 27.5 16 29 C10 27.5 5 23 5 16 V8 Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+        <path d="M16 12 V20 M12 16 H20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+      <div class="brand__text">
+        <span class="brand__title">HU Yuska Maritan</span>
+        <span class="brand__subtitle">Gestão de residência</span>
+      </div>
+    </div>
+
+    <nav class="nav" id="nav">
+      <button class="nav__item is-active" data-view="visao-geral">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M3 11h4v6H3zM8 4h4v13H8zM13 8h4v9h-4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        Visão geral
+      </button>
+      <button class="nav__item" data-view="pacientes">
+        <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="6.5" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M3.5 17c1-3.5 3.8-5.5 6.5-5.5s5.5 2 6.5 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Pacientes
+      </button>
+      <button class="nav__item" data-view="profissionais">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M10 2v3M10 15v3M4 10H2M18 10h-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="10" r="5" stroke="currentColor" stroke-width="1.5"/></svg>
+        Equipe médica
+      </button>
+      <button class="nav__item" data-view="atendimentos">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M3 10h3l1.5-4L11 15l1.5-6H17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Atendimentos
+      </button>
+      <button class="nav__item" data-view="escalas">
+        <svg viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="13" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14M7 2v4M13 2v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Escalas
+      </button>
+      <button class="nav__item" data-view="indicadores">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M3 17V9M9 17V3M15 17v-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Indicadores
+      </button>
+    </nav>
+
+    <div class="sidebar__footer">
+      <span class="status-dot" id="db-status-dot"></span>
+      <span id="db-status-text">verificando conexão…</span>
+    </div>
+  </aside>
+
+  <!--MAIN  -->
+  <main class="main">
+
+    <header class="topbar">
+      <div>
+        <p class="topbar__eyebrow" id="view-eyebrow">Painel</p>
+        <h1 class="topbar__title" id="view-title">Visão geral</h1>
+      </div>
+      <div class="topbar__clock" id="clock">--:--</div>
+    </header>
+
+    <div class="vitals" aria-hidden="true">
+      <svg viewBox="0 0 1000 40" preserveAspectRatio="none" class="vitals__line">
+        <polyline points="0,20 120,20 145,20 160,4 175,36 190,20 220,20 340,20 365,20 380,4 395,36 410,20 440,20 560,20 585,20 600,4 615,36 630,20 660,20 780,20 805,20 820,4 835,36 850,20 880,20 1000,20" />
+      </svg>
+    </div>
+
+    <!--  VISÃO GERAL -->
+    <section class="view is-active" id="view-visao-geral">
+      <div class="stat-grid" id="stat-grid">
+        <div class="stat-card skeleton"></div>
+        <div class="stat-card skeleton"></div>
+        <div class="stat-card skeleton"></div>
+        <div class="stat-card skeleton"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel__head">
+          <h2>Últimos atendimentos</h2>
+          <button class="link-btn" data-view="atendimentos">ver todos →</button>
+        </div>
+        <div class="table-wrap" id="preview-atendimentos"><p class="muted">Carregando…</p></div>
+      </div>
+    </section>
+
+    <!--  PACIENTES  -->
+    <section class="view" id="view-pacientes">
+      <div class="panel">
+        <div class="panel__head">
+          <h2>Prontuários de pacientes</h2>
+          <div class="panel__actions">
+            <input type="search" id="busca-paciente" placeholder="Buscar por nome ou CPF" class="input">
+            <button class="btn btn--primary" id="btn-novo-paciente">+ Novo paciente</button>
+          </div>
+        </div>
+        <div class="table-wrap" id="tabela-pacientes"><p class="muted">Carregando…</p></div>
+      </div>
+    </section>
+
+    <!-- PROFISSIONAIS -->
+    <section class="view" id="view-profissionais">
+      <div class="panel">
+        <div class="panel__head"><h2>Residentes e preceptores</h2></div>
+        <div class="table-wrap" id="tabela-profissionais"><p class="muted">Carregando…</p></div>
+      </div>
+    </section>
+
+    <!-- ATENDIMENTOS  -->
+    <section class="view" id="view-atendimentos">
+      <div class="panel">
+        <div class="panel__head">
+          <h2>Atendimentos</h2>
+          <button class="btn btn--primary" id="btn-novo-atendimento">+ Registrar atendimento</button>
+        </div>
+        <div class="table-wrap" id="tabela-atendimentos"><p class="muted">Carregando…</p></div>
+      </div>
+    </section>
+
+    <!--ESCALAS -->
+    <section class="view" id="view-escalas">
+      <div class="panel">
+        <div class="panel__head"><h2>Escala semanal de plantões</h2></div>
+        <div class="table-wrap" id="tabela-escalas"><p class="muted">Carregando…</p></div>
+      </div>
+    </section>
+
+    <!-- INDICADORES  -->
+    <section class="view" id="view-indicadores">
+      <div class="indicadores-grid">
+
+        <div class="panel">
+          <div class="panel__head"><h2>Ranking de residentes</h2><span class="tag">por total de atendimentos</span></div>
+          <div class="table-wrap" id="ranking-residentes"><p class="muted">Carregando…</p></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__head"><h2>Tempo médio de atendimento</h2><span class="tag">por residente</span></div>
+          <div class="table-wrap" id="tempo-medio"><p class="muted">Carregando…</p></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__head"><h2>Plantões no mês</h2><span class="tag">por unidade e residente</span></div>
+          <div class="table-wrap" id="plantoes-mes"><p class="muted">Carregando…</p></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__head"><h2>Sem procedimento de risco alto</h2><span class="tag">pacientes</span></div>
+          <div class="table-wrap" id="sem-risco-alto"><p class="muted">Carregando…</p></div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- MODAL: novo paciente -->
+<div class="modal" id="modal-paciente">
+  <div class="modal__card">
+    <div class="modal__head">
+      <h3>Novo prontuário</h3>
+      <button class="modal__close" data-close-modal>&times;</button>
+    </div>
+    <form id="form-paciente">
+      <label>Nome completo<input required name="nome" class="input" placeholder="Ex: Maria Oliveira Santos"></label>
+      <label>CPF (11 dígitos)<input required name="cpf" class="input" maxlength="11" placeholder="Somente números"></label>
+      <label>Data de nascimento<input required type="date" name="data_nascimento" class="input"></label>
+      <label>Telefone<input name="telefone" class="input" placeholder="(83) 90000-0000"></label>
+      <label>Convênio<input name="num_convenio" class="input" placeholder="Ex: UNIMED-102"></label>
+      <label>Grupo sanguíneo
+        <select name="grupo_sanguineo" class="input">
+          <option value="">—</option>
+          <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+          <option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
+        </select>
+      </label>
+      <label>Alergias<textarea name="alergias" class="input" rows="2" placeholder="Ex: Dipirona, Poeira"></textarea></label>
+      <div class="modal__error" id="erro-paciente"></div>
+      <div class="modal__actions">
+        <button type="button" class="btn" data-close-modal>Cancelar</button>
+        <button type="submit" class="btn btn--primary">Salvar prontuário</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!--MODAL: novo atendimento -->
+<div class="modal" id="modal-atendimento">
+  <div class="modal__card">
+    <div class="modal__head">
+      <h3>Registrar atendimento</h3>
+      <button class="modal__close" data-close-modal>&times;</button>
+    </div>
+    <form id="form-atendimento">
+      <label>Paciente
+        <select required name="id_paciente" class="input" id="select-paciente"></select>
+      </label>
+      <label>Residente
+        <select required name="id_residente" class="input" id="select-residente"></select>
+      </label>
+      <label>Preceptor
+        <select required name="id_preceptor" class="input" id="select-preceptor"></select>
+      </label>
+      <label>Unidade
+        <select required name="id_unidade" class="input" id="select-unidade"></select>
+      </label>
+      <label>Data e hora<input required type="datetime-local" name="data_hora" class="input"></label>
+      <label>Duração (minutos)<input required type="number" min="1" name="duracao_minutos" class="input" value="30"></label>
+      <div class="modal__error" id="erro-atendimento"></div>
+      <div class="modal__actions">
+        <button type="button" class="btn" data-close-modal>Cancelar</button>
+        <button type="submit" class="btn btn--primary">Registrar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
