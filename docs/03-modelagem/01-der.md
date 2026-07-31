@@ -46,6 +46,7 @@ erDiagram
         uuid id_paciente FK
         uuid id_residente FK
         uuid id_preceptor FK
+        uuid id_unidade FK
     }
 
     PROCEDIMENTO {
@@ -54,6 +55,7 @@ erDiagram
         varchar nome
         integer tempo_medio_minutos
         nivel_risco_enum nivel_risco
+        numeric media_tempo_procedimento
     }
 
     PROCEDIMENTO_REALIZADO {
@@ -61,7 +63,26 @@ erDiagram
         uuid id_procedimento PK, FK
         integer quantidade
         integer tempo_real_minutos
+        timestamp data_hora_inicio
         text observacao
+    }
+
+    INTERNACAO {
+        uuid id_internacao PK
+        uuid id_paciente FK
+        uuid id_unidade FK
+        timestamp data_hora_entrada
+        timestamp data_hora_saida
+        text motivo
+    }
+
+    AUDITORIA_ATENDIMENTO {
+        uuid id_auditoria PK
+        uuid id_atendimento
+        varchar operacao
+        jsonb dados_antigos
+        jsonb dados_novos
+        timestamp alterado_em
     }
 
     FATURAMENTO {
@@ -102,6 +123,7 @@ erDiagram
     PACIENTE ||--o{ ATENDIMENTO : "recebe"
     RESIDENTE ||--o{ ATENDIMENTO : "executa"
     PRECEPTOR ||--o{ ATENDIMENTO : "supervisiona"
+    UNIDADE ||--o{ ATENDIMENTO : "ocorre em"
 
     %% Atendimento N:M Procedimento via tabela associativa
     %% (0,N) e não (1,N): um mínimo de 1 filho não é expressável por FK — exigiria trigger.
@@ -119,4 +141,29 @@ erDiagram
     RESIDENTE ||--o{ ESCALA : "cumpre"
     PRECEPTOR ||--o{ ESCALA : "supervisiona"
     UNIDADE ||--o{ ESCALA : "sedia"
+
+    %% --- Etapa 2 ---
+    %% INTERNACAO: paciente internado numa unidade; saída NULL = ainda internado.
+    PACIENTE ||--o{ INTERNACAO : "é internado em"
+    UNIDADE ||--o{ INTERNACAO : "abriga"
+
+    %% AUDITORIA_ATENDIMENTO é preenchida pelo trigger trg_audita_atendimento.
+    %% NÃO tem FK para ATENDIMENTO de propósito: o log de auditoria sobrevive
+    %% mesmo que o atendimento original seja apagado (por isso a relação é
+    %% tracejada/lógica, não uma FK real).
+    ATENDIMENTO ||..o{ AUDITORIA_ATENDIMENTO : "auditado por"
 ```
+
+---
+
+## Notas da Etapa 2
+
+O diagrama acima já reflete as adições da Etapa 2:
+
+- **`ATENDIMENTO.id_unidade`** — a unidade onde o atendimento ocorreu (a Etapa 1 não amarrava atendimento a unidade). Alimenta `vw_estatisticas_atendimentos_mensal`.
+- **`PROCEDIMENTO_REALIZADO.data_hora_inicio`** — horário real de início do procedimento; base do cálculo de `sp_calcular_tempo_medio_espera`.
+- **`PROCEDIMENTO.media_tempo_procedimento`** — mantida automaticamente pelo trigger `trg_atualiza_media_procedimentos`.
+- **`INTERNACAO`** — entidade nova; `data_hora_saida IS NULL` marca paciente ainda internado. Base de `vw_pacientes_internados`.
+- **`AUDITORIA_ATENDIMENTO`** — log escrito pelo trigger `trg_audita_atendimento` (INSERT/UPDATE/DELETE em `ATENDIMENTO`), sem FK de propósito.
+
+Detalhamento em [`../04-banco/04-procedures.md`](../04-banco/04-procedures.md), [`05-views.md`](../04-banco/05-views.md) e [`06-triggers.md`](../04-banco/06-triggers.md).

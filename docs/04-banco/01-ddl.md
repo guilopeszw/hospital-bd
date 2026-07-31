@@ -2,7 +2,7 @@
 
 ## Visão Geral
 
-13 arquivos DDL numerados por ordem de dependência. Criam todo o schema do hospital: enums, tabelas base, hierarquia de pessoas, tabelas de negócio, faturamento e auditoria.
+14 arquivos DDL numerados por ordem de dependência. Criam todo o schema do hospital: enums, tabelas base, hierarquia de pessoas, tabelas de negócio, faturamento, auditoria e internação.
 
 **Localização:** [`../../sql/ddl/`](../../sql/ddl/)
 
@@ -25,6 +25,7 @@
 | 11 | `11_escala.sql` | `ESCALA` | `UNIDADE`, `RESIDENTE`, `PRECEPTOR` |
 | 12 | `12_faturamento.sql` | `FATURAMENTO` | `PROCEDIMENTO_REALIZADO` |
 | 13 | `13_auditoria_atendimento.sql` | `AUDITORIA_ATENDIMENTO` | — (sem FK, guarda `id_atendimento` cru) |
+| 14 | `14_internacao.sql` | `INTERNACAO` | `PACIENTE`, `UNIDADE` |
 
 ---
 

@@ -62,3 +62,40 @@ Todas rodadas contra o banco populado; resultados conferidos:
 - **`ESCALA` é plantão recorrente semanal** (`dia_semana` categórico + `turno`), não uma data concreta — por isso a consulta "plantões no mês corrente" usa `generate_series` para contar as ocorrências reais no calendário.
 - **`nivel_risco`** fica em `PROCEDIMENTO` (classificação do procedimento em si), não em `PROCEDIMENTO_REALIZADO` (que descreve a execução).
 - **O DER marca (0,N) de ATENDIMENTO para PROCEDIMENTO_REALIZADO**, e não (1,N): um mínimo obrigatório de um filho não é expressável por FK (exigiria trigger). O diagrama reflete o que o schema garante de fato — a justificativa está na seção 4 do PDF.
+
+---
+
+## Etapa 2 — Funcionalidades Avançadas
+
+Progresso: itens 1–4 implementados e **verificados contra o Postgres real**.
+
+### 1. Stored Procedures — feito
+- [x] `sp_registrar_atendimento_completo` (atendimento + procedimentos em JSONB, transação única; rollback verificado).
+- [x] `sp_calcular_tempo_medio_espera` (chegada → 1º procedimento, por unidade).
+- [x] `sp_reajustar_escala` (move escalas de um residente, aborta em conflito).
+- Documentação: [`04-banco/04-procedures.md`](04-banco/04-procedures.md).
+
+### 2. Triggers — feito
+- [x] `trg_check_sobreposicao_escala`, `trg_audita_atendimento`, `trg_atualiza_media_procedimentos`.
+- Tabela nova `AUDITORIA_ATENDIMENTO` e coluna `PROCEDIMENTO.media_tempo_procedimento`.
+- Documentação: [`04-banco/06-triggers.md`](04-banco/06-triggers.md).
+
+### 3. Views — feito
+- [x] `vw_pacientes_internados`, `vw_residentes_sem_supervisor`, `vw_estatisticas_atendimentos_mensal`.
+- Entidade nova `INTERNACAO` (base da 1ª view).
+- Documentação: [`04-banco/05-views.md`](04-banco/05-views.md).
+
+### 4. ORM (SQLAlchemy) — feito
+- [x] Operações da Etapa 1 reimplementadas via DSL em `src/etapa2/` (models + crud_orm), com sessões/transações e eager vs lazy loading.
+- Documentação: [`05-aplicacao/03-orm.md`](05-aplicacao/03-orm.md).
+
+### Ainda em aberto
+- [ ] Item 5 — consultas avançadas via ORM.
+- [ ] Item 6 — concorrência e locks.
+- [ ] Item 7 — vídeo de até 8 min + relatório de 2 páginas.
+
+### Ajustes de schema da Etapa 2 (aditivos)
+- `ATENDIMENTO.id_unidade` — unidade onde o atendimento ocorreu (alimenta a view mensal).
+- `PROCEDIMENTO_REALIZADO.data_hora_inicio` — início real do procedimento (base do tempo de espera).
+- `PROCEDIMENTO.media_tempo_procedimento` — mantida pelo trigger de média.
+- DER atualizado em [`03-modelagem/01-der.md`](03-modelagem/01-der.md).
