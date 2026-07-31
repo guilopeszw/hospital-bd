@@ -1,4 +1,5 @@
-const API_BASE = "http://localhost:5000/api";
+// Porta 5055: no macOS o AirPlay ocupa a 5000 e devolve 403.
+const API_BASE = "http://localhost:5055/api";
 
 
 // helpers
@@ -176,7 +177,7 @@ async function carregarVisaoGeral() {
       </div>
     `;
   } catch {
-    document.getElementById("stat-grid").innerHTML = `<div class="empty" style="grid-column:1/-1">Não foi possível carregar o resumo. Confira se a API (python app.py) está rodando em localhost:5000.</div>`;
+    document.getElementById("stat-grid").innerHTML = `<div class="empty" style="grid-column:1/-1">Não foi possível carregar o resumo. Confira se a API (python app.py) está rodando em localhost:5055.</div>`;
   }
 
   try {
