@@ -4,15 +4,16 @@
 
 ## Estado Geral
 
-- **Progresso Etapa 1**: schema, seeds, CRUD, CLI, consultas analíticas e PDF do DER prontos e **verificados contra o Postgres real** (16 testes passando).
-- Falta apenas: apresentação de 10 minutos (fora do escopo de código) e revisão cruzada do time.
+- **Progresso Etapa 1**: schema, seeds, CRUD, CLI, consultas analíticas e DER prontos e **verificados contra o Postgres real** (16 testes passando). Entrega do DER em [`03-modelagem/04-diagrama.png`](03-modelagem/04-diagrama.png) + [`03-justificativa_cardinalidades.md`](03-modelagem/03-justificativa_cardinalidades.md) + `DER_e_cardinalidades_atualizado.docx`.
+- **Progresso Etapa 2**: items 1–4 (procedures, triggers, views, ORM) implementados e verificados contra o Postgres real. Em aberto: item 5 (consultas avançadas ORM), item 6 (concorrência), item 7 (vídeo + relatório).
+- Falta apenas: apresentação de 10 minutos (fora do escopo de código), revisão cruzada do time, e os itens em aberto da Etapa 2.
 
 ---
 
 ## 1. Modelagem
 
 - [x] DER completo em Mermaid (`03-modelagem/01-der.md`), cobrindo Pessoa/Paciente/Profissional/Preceptor/Residente, Unidade, Atendimento, Procedimento, Procedimento_Realizado, Faturamento e Escala.
-- [ ] **PDF de entrega do DER**, com a justificativa de cardinalidade (mínimo, máximo e participação) de cada relacionamento e de cada especialização — pendência de entrega, a cargo do time.
+- [x] **Entrega do DER**, com a justificativa de cardinalidade (mínimo, máximo e participação) de cada relacionamento e de cada especialização — [`03-modelagem/03-justificativa_cardinalidades.md`](03-modelagem/03-justificativa_cardinalidades.md) + [`04-diagrama.png`](03-modelagem/04-diagrama.png) + `DER_e_cardinalidades_atualizado.docx` (untracked — ainda não commitado).
 - [x] Modelo relacional completo (`03-modelagem/02-normalizacao.md`, seções 1 e 3).
 - [x] Normalização até 3FN justificada para todas as tabelas, incluindo a prova não-trivial de 2FN de `PROCEDIMENTO_REALIZADO` (chave composta).
 
@@ -51,7 +52,8 @@ Todas rodadas contra o banco populado; resultados conferidos:
 
 ## Testes automatizados — 16 passando
 
-- `../tests/conftest.py` recria o schema do zero a cada sessão (`DROP SCHEMA public CASCADE` + DDL `01`–`12`). Como isso apaga os seeds, refaça o passo 2 do README antes de demonstrar a CLI.
+- `../tests/conftest.py` recria o schema do zero a cada sessão (`DROP SCHEMA public CASCADE` + DDL `01`–`14`). Como isso apaga os seeds, refaça o passo 2 do README antes de demonstrar a CLI.
+- **Atenção**: o conftest NÃO carrega triggers, procedures e views — cobre só DDL/constraints da Etapa 1. As funções da Etapa 2 (sp_*/fn_*) são validadas manualmente contra o banco (ver seção Etapa 2). Vale adicionar testes automatizados para elas (rollback da `sp_registrar_atendimento_completo`, RAISE da `trg_check_sobreposicao_escala`, `media_tempo_procedimento` recalculada).
 - `../tests/unit/test_core_entities.py` (5): CPF único, regex de CPF, grupo sanguíneo, default de `is_flamengo`.
 - `../tests/unit/test_negocio.py` (11): FK de Atendimento, UNIQUE de Escala, mesmo preceptor com residentes diferentes, enum de `nivel_risco`, CHECK de `capacidade_leitos`, os 4 casos de faturamento (bloqueia delete, FK RESTRICT, permite delete sem faturamento, não fatura duas vezes) e os 2 de exclusividade de papel.
 
@@ -87,12 +89,19 @@ Progresso: itens 1–4 implementados e **verificados contra o Postgres real**.
 
 ### 4. ORM (SQLAlchemy) — feito
 - [x] Operações da Etapa 1 reimplementadas via DSL em `src/etapa2/` (models + crud_orm), com sessões/transações e eager vs lazy loading.
+- [ ] **Alembic para migrations — não implementado.** Consequência real observada: base criada na Etapa 1 (sem `PROCEDIMENTO.media_tempo_procedimento`) quebra os triggers/procedures da Etapa 2 até a coluna ser adicionada à mão. Recomendação: adicionar Alembic OU documentar um script de `ALTER TABLE` de migração.
 - Documentação: [`05-aplicacao/03-orm.md`](05-aplicacao/03-orm.md).
 
 ### Ainda em aberto
-- [ ] Item 5 — consultas avançadas via ORM.
+- [ ] Item 5 — consultas avançadas via ORM (flamenguistas, último atendimento, % alto risco).
 - [ ] Item 6 — concorrência e locks.
-- [ ] Item 7 — vídeo de até 8 min + relatório de 2 páginas.
+- [ ] Item 7 — tag `v1.0-etapa2`, vídeo de até 8 min + relatório de 2 páginas.
+- [ ] Commit do `DER_e_cardinalidades_atualizado.docx` (entrega da Etapa 1 ainda untracked).
+
+### Lições aprendidas / bugs pegos na verificação
+- **Migração de schema sem Alembic é bug em potencial.** O `conftest.py` recria o schema do zero a cada sessão de teste, então os testes sempre veem o DDL novo. Mas uma base já existente (criada na Etapa 1) NÃO ganha `media_tempo_procedimento` nem `AUDITORIA_ATENDIMENTO`/`INTERNACAO` sozinha — a coluna nova precisa de `ALTER TABLE` manual (ou recriação). Foi exatamente o que aconteceu ao validar as procedures na base real.
+- **`src/etapa2/models.py`: `Faturamento.id_atendimento`/`id_procedimento` sem `ForeignKey`** — o schema tem `ON DELETE RESTRICT`, mas o modelo não declara a FK. Não quebra as operações atuais (não há delete via ORM), mas a ORM não reflete o relacionamento. Adicionar `ForeignKey("atendimento.id_atendimento")`/`ForeignKey("procedimento.id_procedimento")` quando o modelo ganhar o relacionamento.
+- **`models.py`: `data_hora` anotado como `Mapped[str]` mas coluna `DateTime`** — o driver devolve `datetime`, não `str`. Anotação enganosa; usar `Mapped[datetime]` ou converter na leitura.
 
 ### Ajustes de schema da Etapa 2 (aditivos)
 - `ATENDIMENTO.id_unidade` — unidade onde o atendimento ocorreu (alimenta a view mensal).

@@ -44,60 +44,57 @@ Este documento substitui o planejamento genérico anterior (sprints fixos, divis
 
 ---
 
-## 2. Checklist — Etapa 2 (avançado) — nada iniciado ainda
-
-> Não começar antes da Etapa 1 estar 100% fechada (PDF + apresentação). Os caminhos de arquivo abaixo são **propostos**, ainda não existem.
+## 2. Checklist — Etapa 2 (avançado)
 
 ### 1. Stored Procedures (1,5 pt)
-- [ ] `sp_registrar_atendimento_completo` (transação com rollback) → `../sql/procedures/sp_registrar_atendimento_completo.sql`
-- [ ] `sp_calcular_tempo_medio_espera` → `../sql/procedures/sp_calcular_tempo_medio_espera.sql`
-- [ ] `sp_reajustar_escala` (com checagem de conflito) → `../sql/procedures/sp_reajustar_escala.sql`
+- [x] `sp_registrar_atendimento_completo` (atendimento + lista de procedimentos via JSONB, transação única, rollback verificado) → `../sql/procedures/sp_registrar_atendimento_completo.sql`
+- [x] `sp_calcular_tempo_medio_espera` (chegada → 1º procedimento, por unidade) → `../sql/procedures/sp_calcular_tempo_medio_espera.sql`
+- [x] `sp_reajustar_escala` (move escalas de um residente, aborta em conflito) → `../sql/procedures/sp_reajustar_escala.sql`
 
 ### 2. Triggers (1,5 pt)
-- [ ] `trg_check_sobreposicao_escala` (BEFORE INSERT/UPDATE em ESCALA) → `../sql/triggers/trg_check_sobreposicao_escala.sql`
-- [ ] `trg_audita_atendimento` + tabela `AUDITORIA_ATENDIMENTO` → `../sql/triggers/trg_audita_atendimento.sql`
-- [ ] `trg_atualiza_media_procedimentos` (coluna `media_tempo_procedimento` em PROCEDIMENTO) → `../sql/triggers/trg_atualiza_media_procedimentos.sql`
+- [x] `trg_check_sobreposicao_escala` (BEFORE INSERT/UPDATE em ESCALA — barra mesmo residente em 2 unidades no mesmo dia/turno) → `../sql/triggers/trg_check_sobreposicao_escala.sql`
+- [x] `trg_audita_atendimento` + tabela `AUDITORIA_ATENDIMENTO` → `../sql/triggers/trg_audita_atendimento.sql`
+- [x] `trg_atualiza_media_procedimentos` (coluna `media_tempo_procedimento` em PROCEDIMENTO) → `../sql/triggers/trg_atualiza_media_procedimentos.sql`
 
 ### 3. Views (1,0 pt)
-- [ ] `vw_pacientes_internados` → **depende de uma tabela `INTERNACAO`, que não existe** (foi removida do DER da Etapa 1 por estar fora de escopo — decisão pendente: criar agora)
-- [ ] `vw_residentes_sem_supervisor` → `../sql/views/vw_residentes_sem_supervisor.sql`
-- [ ] `vw_estatisticas_atendimentos_mensal` → `../sql/views/vw_estatisticas_atendimentos_mensal.sql`
+- [x] `vw_pacientes_internados` — entidade `INTERNACAO` criada (DDL 14) para sustentá-la → `../sql/views/vw_pacientes_internados.sql`
+- [x] `vw_residentes_sem_supervisor` → `../sql/views/vw_residentes_sem_supervisor.sql`
+- [x] `vw_estatisticas_atendimentos_mensal` → `../sql/views/vw_estatisticas_atendimentos_mensal.sql`
 
 ### 4. ORM (2,0 pts)
-- [ ] Modelos SQLAlchemy (herança Pessoa/Paciente/Profissional via Joined Table Inheritance) → `../src/etapa2/models.py`
-- [ ] Alembic para migrations
-- [ ] Reimplementar as operações da Etapa 1 usando sessões/transações da ORM
-- [ ] Demonstrar lazy vs eager loading em pelo menos uma relação
+- [x] Modelos SQLAlchemy 2.0 (`src/etapa2/models.py`) — Pessoa/Paciente/Profissional/Preceptor/Residente, Unidade, Atendimento, Procedimento, ProcedimentoRealizado, Faturamento, Escala
+- [ ] Alembic para migrations — **não implementado**. O schema é recriado do zero (`DROP SCHEMA` no `conftest.py` ou manual). Exatamente por isso uma base criada na Etapa 1 quebra na Etapa 2 (coluna `media_tempo_procedimento` ausente) — ver seção "Lições aprendidas".
+- [x] Reimplementar as operações da Etapa 1 usando sessões/transações da ORM (`src/etapa2/crud_orm.py`) — self-check: `python -m src.etapa2.crud_orm`
+- [x] Demonstrar lazy vs eager loading em pelo menos uma relação — `selectinload` em `listar_atendimentos_paciente` vs lazy default em `ProcedimentoRealizado.procedimento`
 
-### 5. Consultas avançadas com ORM (1,0 pt)
+### 5. Consultas avançadas com ORM (1,0 pt) — **em aberto**
 - [ ] Preceptores que supervisionaram residentes que atenderam pacientes flamenguistas
 - [ ] Último atendimento de cada paciente (data, residente, preceptor, procedimentos)
 - [ ] % de procedimentos de alto risco por residente
 
-### 6. Concorrência e transações (1,0 pt)
+### 6. Concorrência e transações (1,0 pt) — **em aberto**
 - [ ] Cenário de duas transações concorrentes escalando o mesmo residente no mesmo dia/turno/unidade, com lock otimista ou pessimista + logs
 
 ### 7. Entrega final (1 pt extra)
-- [ ] Tag `v1.0-etapa1` (retroativa, no commit que fecha a Etapa 1 — ver seção 4)
+- [x] Tag `v1.0-etapa1` (retroativa, commit `39a1a2d` que fecha a Etapa 1)
 - [ ] Tag `v1.0-etapa2`
 - [ ] Vídeo de até 8 minutos
 - [ ] Relatório de 2 páginas (`relatorio_etapa2.md`) — decisões de trigger vs procedure, escolha da ORM
 
 ---
 
-## Estratégia GitHub — separar Etapa 1 de Etapa 2
+## Estratégia GitHub — main (Etapa 1) + stage (Etapa 2)
 
-O requisito ("commits separados por Etapa 1 e Etapa 2") é resolvido com **tags do git**, não com branches long-lived — é o recurso nativo pra marcar um corte no histórico sem duplicar/esconder código:
+O requisito ("commits separados por Etapa 1 e Etapa 2") é resolvido com **uma tag + duas branches**:
 
-1. Marcar agora, retroativamente, o commit que fecha a Etapa 1 com a tag `v1.0-etapa1`.
-2. Todo o trabalho da Etapa 2 continua como commits normais em `main`, seguindo a mesma convenção já usada (`feat(orm):`, `feat(trigger):`, `feat(procedure):`, `docs(etapa2):`, etc.).
-3. Ao final, marcar o último commit da Etapa 2 com a tag `v1.0-etapa2`.
-4. Qualquer pessoa (incluindo quem for corrigir) vê exatamente o que foi Etapa 2 com `git log v1.0-etapa1..v1.0-etapa2` ou comparando as tags no GitHub — zero ferramenta extra, zero branch para gerenciar.
-
-Custo total: dois comandos `git tag`. Mencionar as tags no `README.md` quando a Etapa 2 estiver perto do fim.
+1. Tag `v1.0-etapa1` **já criada** no commit `39a1a2d` (fim da Etapa 1).
+2. `main` é a linha canônica unificada (Etapa 1 + Etapa 2 + webapp); o corte da Etapa 1 é demarcado pela tag.
+3. `stage` é a branch da Etapa 2 (este plano/checklist vive nela). Trabalho novo da Etapa 2 entra por PR para a `stage`, e de lá é mergeado na `main` quando fechar.
+4. `main-parte2` e `docs/checklist-etapa1` são linhas antigas já absorvidas pela `main` — mantidas por histórico, não devem receber commits novos.
+5. Para ver o que é da Etapa 2: `git log v1.0-etapa1..main` ou comparar as branches.
 
 ---
 
 ## 7. Stack (referência rápida)
 
-PostgreSQL 16 (Docker) · Python 3.12 · `psycopg2` (Etapa 1) · SQLAlchemy 2.x + Alembic (Etapa 2) · `pytest` · Mermaid para o DER.
+PostgreSQL 16 (Docker) · Python 3.12 · `psycopg2` (Etapa 1) · SQLAlchemy 2.x (Etapa 2; Alembic ainda não instalado) · Flask (webapp) · `pytest` · Mermaid para o DER.
