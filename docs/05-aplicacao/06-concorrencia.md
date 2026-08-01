@@ -34,6 +34,17 @@ with Session.begin() as s:
     # ... checagem de conflito + insert, protegidos pelo lock ...
 ```
 
+## Correção aplicada em `models.py`
+
+Na primeira tentativa de rodar a demo apareceu um `FlushError: NULL identity
+key` ao inserir a `Escala`. Causa: `Escala.id_escala` e
+`Atendimento.id_atendimento` são UUID gerados no banco
+(`DEFAULT uuid_generate_v4()` no DDL), mas o `models.py` não declarava esse
+default do lado Python — então o SQLAlchemy não sabia recuperar o valor
+gerado depois do `INSERT`. Corrigido adicionando
+`default=lambda: str(uuid.uuid4())` nas duas colunas, gerando o UUID no
+Python em vez de depender do retorno do banco.
+
 ## Demo
 
 ```bash
@@ -47,22 +58,28 @@ preceptores diferentes. Um `atraso_simulado` de meio segundo entre travar a
 linha e commitar deixa o race window visível nos logs — sem ele a disputa
 seria rápida demais para observar no terminal.
 
-### Log esperado (exemplo)
+### Log real (rodado em 01/08/2026)
 
 ```
-[10:02:01.001] [thread-A] tentando travar a linha do residente ...
-[10:02:01.002] [thread-A] lock adquirido — checando conflito de escala…
-[10:02:01.052] [thread-B] tentando travar a linha do residente ...   <- fica bloqueada aqui
-[10:02:01.502] [thread-A] OK — escala ... criada. Commitando (lock será liberado agora).
-[10:02:01.503] [thread-B] lock adquirido — checando conflito de escala…
-[10:02:01.503] [thread-B] CONFLITO — residente já escalado nesse dia/turno/unidade. Abortando.
+[14:41:17.665] [thread-A] tentando travar a linha do residente c1111111-1111-1111-1111-111111111111…
+[14:41:17.669] [thread-A] lock adquirido — checando conflito de escala…
+[14:41:17.716] [thread-B] tentando travar a linha do residente c1111111-1111-1111-1111-111111111111…
+[14:41:18.179] [thread-A] OK — escala 5363ad82-d95f-488f-b5ed-7565722d33b9 criada. Commitando (lock será liberado agora).
+[14:41:18.183] [thread-B] lock adquirido — checando conflito de escala…
+[14:41:18.694] [thread-B] CONFLITO — residente já escalado nesse dia/turno/unidade. Abortando.
 
 --- resultado final ---
-thread-A: ('sucesso', '...')
-thread-B: ('rejeitada', 'Residente ... já está escalado em segunda/noite nessa unidade.')
+thread-A: ('sucesso', '5363ad82-d95f-488f-b5ed-7565722d33b9')
+thread-B: ('rejeitada', 'Residente c1111111-1111-1111-1111-111111111111 já está escalado em segunda/noite nessa unidade.')
 
 OK — o lock pessimista impediu a dupla escala do mesmo residente no mesmo slot.
 ```
+
+Repara no timing: `thread-B` chega a tentar travar a linha às `17.716`, mas só
+consegue o lock às `18.183` — ou seja, ficou bloqueada ~467ms esperando a
+`thread-A` liberar (ela só libera depois do `atraso_simulado` de 0.5s +
+commit). Isso confirma que o `FOR UPDATE` está de fato serializando as
+duas tentativas, e não é coincidência que só uma tenha passado.
 
 A demo termina com um `assert` conferindo que houve exatamente 1 sucesso e
 1 rejeição — nunca as duas escalas indo pra frente, nunca as duas caindo

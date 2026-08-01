@@ -7,6 +7,7 @@ mapeados como str (o driver faz o cast), e UUID volta como str para
 casar com os UUIDs de seed.
 """
 import os
+import uuid
 
 from sqlalchemy import (
     create_engine, ForeignKey, String, Integer, Numeric, Text, DateTime, Boolean,
@@ -120,7 +121,7 @@ class Procedimento(Base):
 
 class Atendimento(Base):
     __tablename__ = "atendimento"
-    id_atendimento: Mapped[str] = mapped_column(_UUID, primary_key=True)
+    id_atendimento: Mapped[str] = mapped_column(_UUID, primary_key=True, default=lambda: str(uuid.uuid4()))
     data_hora: Mapped[str] = mapped_column(DateTime)
     duracao_minutos: Mapped[int] = mapped_column(Integer)
     id_paciente: Mapped[str] = mapped_column(_UUID, ForeignKey("paciente.id_pessoa"))
@@ -162,7 +163,7 @@ class Faturamento(Base):
 
 class Escala(Base):
     __tablename__ = "escala"
-    id_escala: Mapped[str] = mapped_column(_UUID, primary_key=True)
+    id_escala: Mapped[str] = mapped_column(_UUID, primary_key=True, default=lambda: str(uuid.uuid4()))
     id_unidade: Mapped[str] = mapped_column(_UUID, ForeignKey("unidade.id_unidade"))
     dia_semana: Mapped[str] = mapped_column(String)
     turno: Mapped[str] = mapped_column(String)
