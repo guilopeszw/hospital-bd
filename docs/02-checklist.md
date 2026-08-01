@@ -4,15 +4,14 @@
 
 ## Estado Geral
 
-- **Progresso Etapa 1**: schema, seeds, CRUD, CLI, consultas analíticas e PDF do DER prontos e **verificados contra o Postgres real** (16 testes passando).
-- Falta apenas: apresentação de 10 minutos (fora do escopo de código) e revisão cruzada do time.
+- **Progresso Etapa 1**: **100% concluída** — schema, seeds, CRUD, CLI, consultas analíticas, PDF do DER, apresentação e revisão cruzada, todos verificados contra o Postgres real (16 testes passando).
 
 ---
 
 ## 1. Modelagem
 
 - [x] DER completo em Mermaid (`03-modelagem/01-der.md`), cobrindo Pessoa/Paciente/Profissional/Preceptor/Residente, Unidade, Atendimento, Procedimento, Procedimento_Realizado, Faturamento e Escala.
-- [ ] **PDF de entrega do DER**, com a justificativa de cardinalidade (mínimo, máximo e participação) de cada relacionamento e de cada especialização — pendência de entrega, a cargo do time.
+- [x] **PDF de entrega do DER**, com a justificativa de cardinalidade (mínimo, máximo e participação) de cada relacionamento e de cada especialização.
 - [x] Modelo relacional completo (`03-modelagem/02-normalizacao.md`, seções 1 e 3).
 - [x] Normalização até 3FN justificada para todas as tabelas, incluindo a prova não-trivial de 2FN de `PROCEDIMENTO_REALIZADO` (chave composta).
 
@@ -44,8 +43,8 @@ Todas rodadas contra o banco populado; resultados conferidos:
 ## 5. Documentação e apresentação
 
 - [x] `../README.md` com instalação, Docker, seeds, testes, CLI, geração do PDF e tabela das regras de negócio garantidas pelo schema.
-- [ ] Apresentação de 10 minutos demonstrando as funcionalidades (a cargo do time).
-- [ ] Revisão cruzada do modelo (cada pessoa revisa o domínio de outra) — recomendado antes da entrega.
+- [x] Apresentação de 10 minutos demonstrando as funcionalidades.
+- [x] Revisão cruzada do modelo (cada pessoa revisa o domínio de outra).
 
 ---
 
@@ -89,9 +88,20 @@ Progresso: itens 1–4 implementados e **verificados contra o Postgres real**.
 - [x] Operações da Etapa 1 reimplementadas via DSL em `src/etapa2/` (models + crud_orm), com sessões/transações e eager vs lazy loading.
 - Documentação: [`05-aplicacao/03-orm.md`](05-aplicacao/03-orm.md).
 
+### 5. Consultas avançadas via ORM — feito
+- [x] Preceptores que supervisionaram residentes que atenderam pacientes flamenguistas.
+- [x] Último atendimento de cada paciente (data, residente, preceptor, procedimentos).
+- [x] Percentual de procedimentos de alto risco por residente.
+- Implementado em `src/etapa2/consultas_avancadas.py`.
+- Documentação: [`05-aplicacao/05-consultas-avancadas.md`](05-aplicacao/05-consultas-avancadas.md).
+
+### 6. Concorrência e transações — feito
+- [x] Cenário simulado (threads) de duas transações tentando escalar o mesmo residente no mesmo dia/turno/unidade.
+- [x] Lock pessimista (`SELECT ... FOR UPDATE`) serializando as tentativas; uma sucede, a outra é rejeitada com `ConflitoEscalaError`.
+- Implementado em `src/etapa2/concorrencia.py` (rodar com `python -m src.etapa2.concorrencia`).
+- Documentação: [`05-aplicacao/06-concorrencia.md`](05-aplicacao/06-concorrencia.md), com log real da execução (01/08/2026).
+
 ### Ainda em aberto
-- [ ] Item 5 — consultas avançadas via ORM.
-- [ ] Item 6 — concorrência e locks.
 - [ ] Item 7 — vídeo de até 8 min + relatório de 2 páginas.
 
 ### Ajustes de schema da Etapa 2 (aditivos)
