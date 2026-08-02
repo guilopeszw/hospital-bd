@@ -175,6 +175,14 @@ async function carregarVisaoGeral() {
         <p class="stat-card__label">Faturamento do mês</p>
         <p class="stat-card__value">${fmtMoeda(s.faturamento_mes)}</p>
       </div>
+      <div class="stat-card">
+        <p class="stat-card__label">Pacientes internados</p>
+        <p class="stat-card__value">${esc(s.pacientes_internados)}</p>
+      </div>
+      <div class="stat-card stat-card--amber">
+        <p class="stat-card__label">Residentes sem supervisor</p>
+        <p class="stat-card__value">${esc(s.residentes_sem_supervisor)}</p>
+      </div>
     `;
   } catch {
     document.getElementById("stat-grid").innerHTML = `<div class="empty" style="grid-column:1/-1">Não foi possível carregar o resumo. Confira se a API (python app.py) está rodando em localhost:5055.</div>`;
@@ -286,10 +294,10 @@ const TURNO_LEGIVEL = { manha: "Manhã", tarde: "Tarde", noite: "Noite" };
 async function carregarEscalas() {
   const alvo = document.getElementById("tabela-escalas");
   try {
-    const esc = await apiGet("/escalas");
+    const escalas = await apiGet("/escalas");
     alvo.innerHTML = tabela(
       ["Unidade", "Dia", "Turno", "Residente", "Preceptor"],
-      esc,
+      escalas,
       (e) => `<tr>
         <td>${esc(e.unidade)}</td>
         <td>${esc(DIA_LEGIVEL[e.dia_semana] || e.dia_semana)}</td>
@@ -346,6 +354,39 @@ async function carregarIndicadores() {
       );
     })
     .catch(() => { document.getElementById("sem-risco-alto").innerHTML = `<div class="empty">Sem dados.</div>`; });
+
+  // stored procedure sp_calcular_tempo_medio_espera
+  apiGet("/analytics/tempo-medio-espera")
+    .then((rows) => {
+      document.getElementById("tempo-medio-espera").innerHTML = tabela(
+        ["Unidade", "Atendimentos medidos", "Espera média"],
+        rows,
+        (r) => `<tr><td>${esc(r.unidade)}</td><td>${esc(r.atendimentos_medidos)}</td><td>${esc(r.espera_media_minutos)} min</td></tr>`
+      );
+    })
+    .catch(() => { document.getElementById("tempo-medio-espera").innerHTML = `<div class="empty">Sem dados.</div>`; });
+
+  // view vw_pacientes_internados
+  apiGet("/views/pacientes-internados")
+    .then((rows) => {
+      document.getElementById("pacientes-internados").innerHTML = tabela(
+        ["Paciente", "Unidade", "Entrada", "Motivo"],
+        rows,
+        (r) => `<tr><td>${esc(r.paciente)}</td><td>${esc(r.unidade)}</td><td>${fmtData(r.data_hora_entrada)}</td><td>${esc(r.motivo || "—")}</td></tr>`
+      );
+    })
+    .catch(() => { document.getElementById("pacientes-internados").innerHTML = `<div class="empty">Sem dados.</div>`; });
+
+  // view vw_residentes_sem_supervisor
+  apiGet("/views/residentes-sem-supervisor")
+    .then((rows) => {
+      document.getElementById("residentes-sem-supervisor").innerHTML = tabela(
+        ["Residente", "Unidade", "Dia/turno", "Preceptor", "Titulação"],
+        rows,
+        (r) => `<tr><td>${esc(r.residente)}</td><td>${esc(r.unidade)}</td><td>${esc(DIA_LEGIVEL[r.dia_semana] || r.dia_semana)}/${esc(TURNO_LEGIVEL[r.turno] || r.turno)}</td><td>${esc(r.preceptor)}</td><td>${esc(r.titulacao)}</td></tr>`
+      );
+    })
+    .catch(() => { document.getElementById("residentes-sem-supervisor").innerHTML = `<div class="empty">Sem dados.</div>`; });
 }
 
 // modal: novo paciente
@@ -415,6 +456,51 @@ document.getElementById("form-atendimento").addEventListener("submit", async (e)
     jaCarregado.delete("atendimentos");
     carregarAtendimentos();
   } catch (err) {
+    erro.textContent = err.message;
+  }
+});
+
+
+// modal: nova escala
+
+const modalEscala = document.getElementById("modal-escala");
+
+document.getElementById("btn-nova-escala").addEventListener("click", async () => {
+  modalEscala.classList.add("is-open");
+  const selU = document.getElementById("select-escala-unidade");
+  const selR = document.getElementById("select-escala-residente");
+  const selPre = document.getElementById("select-escala-preceptor");
+  selU.innerHTML = selR.innerHTML = selPre.innerHTML = `<option>Carregando…</option>`;
+
+  try {
+    const [unidades, profissionais] = await Promise.all([apiGet("/unidades"), apiGet("/profissionais")]);
+    const residentes = profissionais.filter((p) => p.papel_atual === "residente");
+    const preceptores = profissionais.filter((p) => p.papel_atual === "preceptor");
+
+    selU.innerHTML = unidades.map((u) => `<option value="${esc(u.id_unidade)}">${esc(u.nome)}</option>`).join("");
+    selR.innerHTML = residentes.map((p) => `<option value="${esc(p.id_pessoa)}">${esc(p.nome)} (${esc(p.ano_residencia)})</option>`).join("");
+    selPre.innerHTML = preceptores.map((p) => `<option value="${esc(p.id_pessoa)}">${esc(p.nome)}</option>`).join("");
+  } catch {
+    document.getElementById("erro-escala").textContent = "Não foi possível carregar unidades/equipe.";
+  }
+});
+
+document.getElementById("form-escala").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const erro = document.getElementById("erro-escala");
+  erro.textContent = "";
+  const fd = new FormData(e.target);
+  const payload = Object.fromEntries(fd.entries());
+  try {
+    await apiPost("/escalas", payload);
+    modalEscala.classList.remove("is-open");
+    e.target.reset();
+    showToast("Escala criada com sucesso.");
+    jaCarregado.delete("escalas");
+    carregarEscalas();
+  } catch (err) {
+    // Conflito vem do trigger trg_check_sobreposicao_escala (ou da UNIQUE) —
+    // mostra a mensagem de negócio direto do banco, sem reformular.
     erro.textContent = err.message;
   }
 });

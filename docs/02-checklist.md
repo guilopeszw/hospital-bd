@@ -5,7 +5,7 @@
 ## Estado Geral
 
 - **Progresso Etapa 1**: **100% concluída** — schema, seeds, CRUD, CLI, consultas analíticas, PDF do DER, apresentação e revisão cruzada, todos verificados contra o Postgres real (16 testes passando).
-- **Progresso Etapa 2**: itens 1–6 (procedures, triggers, views, ORM, consultas avançadas, concorrência) implementados e agora com **testes automatizados** (ORM, consultas avançadas, concorrência com threads reais e a API Flask do webapp) — 50 testes no total, ver [`05-aplicacao/02-testes.md`](05-aplicacao/02-testes.md). Falta só o item 7 (vídeo + relatório).
+- **Progresso Etapa 2**: itens 1–6 (procedures, triggers, views, ORM, consultas avançadas, concorrência) implementados e agora com **testes automatizados** (ORM, consultas avançadas, concorrência com threads reais e a API Flask do webapp) — 68 testes no total, ver [`05-aplicacao/02-testes.md`](05-aplicacao/02-testes.md). O webapp também passou a consumir procedures/views e disparar triggers de verdade (não só a CLI/ORM) — ver [`05-aplicacao/04-webapp.md`](05-aplicacao/04-webapp.md). Falta só o item 7 (vídeo + relatório).
 
 ---
 

@@ -5,9 +5,9 @@
 Suite de testes com `pytest`. Duas camadas:
 
 - **`tests/unit/`** — SQL puro via `psycopg2` (schema/constraints/regras de negócio) e ORM via SQLAlchemy (Etapa 2: `crud_orm`, `consultas_avancadas`, `concorrencia`). 34 testes.
-- **`tests/integration/`** — API Flask do webapp via test client. 16 testes.
+- **`tests/integration/`** — API Flask do webapp via test client, incluindo os endpoints que chamam procedures/views e disparam triggers da Etapa 2. 34 testes.
 
-Total: **50 testes**, todos rodando contra o Postgres real (nenhum mock de banco).
+Total: **68 testes**, todos rodando contra o Postgres real (nenhum mock de banco).
 
 **Localização:** [`../../tests/`](../../tests/)
 
@@ -25,7 +25,7 @@ tests/
 │   ├── test_etapa2_consultas_avancadas.py   # 4 testes (consultas_avancadas.py)
 │   └── test_etapa2_concorrencia.py          # 3 testes (concorrencia.py, threads reais)
 └── integration/
-    └── test_webapp.py                       # 16 testes (API Flask, test client)
+    └── test_webapp.py                       # 34 testes (API Flask, test client)
 ```
 
 ---
@@ -87,9 +87,17 @@ Cobre os 3 itens do enunciado (preceptores que supervisionaram flamenguistas, ú
 
 Testa `escalar_residente_com_lock` isoladamente (cria escala; rejeita slot já ocupado) e a `demo()` real com duas threads disputando o mesmo residente/dia/turno/unidade — verifica que o lock pessimista serializa (exatamente 1 sucesso, 1 rejeição, nunca os dois nem erro cru de banco). Usa slots (`domingo`) que não existem no seed, pra não colidir com a UNIQUE real.
 
-## Testes: Webapp — test_webapp.py (16 testes)
+## Testes: Webapp — test_webapp.py (34 testes)
 
-Sobe a API Flask via test client (sem processo separado) contra o Postgres real. Cobre `/api/health`, `/api/dashboard/summary`, CRUD de pacientes (listar, buscar, criar, CPF duplicado, campo obrigatório faltando), CRUD de atendimentos (criar, unidade inexistente), listagens de apoio (unidades/procedimentos/escalas/profissionais) e os 5 endpoints de `/api/analytics/*`.
+Sobe a API Flask via test client (sem processo separado) contra o Postgres real. Cobre `/api/health`, `/api/dashboard/summary`, CRUD de pacientes (listar, buscar, criar, atualizar, CPF duplicado, campo obrigatório faltando), CRUD de atendimentos (criar, unidade inexistente), CRUD de profissionais e unidades, listagens de apoio, e os 6 endpoints de `/api/analytics/*`.
+
+**Etapa 2 via HTTP** — a segunda metade do arquivo prova que views/procedures/triggers funcionam de ponta a ponta pela API, não só pela CLI/ORM:
+- `/api/views/*` batem com o resultado das 3 views direto no banco.
+- `sp_registrar_atendimento_completo` (via `POST /atendimentos` com `procedimentos`): confirma no Postgres, com uma query separada, que o atendimento *e* o procedimento foram persistidos — não só que a API respondeu 201. Foi esse teste que pegou o bug do `query()`/`execute()` (ver `04-webapp.md`).
+- `sp_reajustar_escala` (`POST /escalas/reajustar`): confirma no banco que o slot da escala mudou de verdade.
+- `trg_atualiza_media_procedimentos`: registra um procedimento e confere que `media_tempo_procedimento` mudou de valor no Postgres.
+- `trg_check_sobreposicao_escala`: cria duas escalas conflitantes via `POST /escalas` e espera `409` com a mensagem do `RAISE EXCEPTION`.
+- Testes que criam dado novo (residente, escala, unidade) limpam depois de si — outros módulos desta suite assumem contagens exatas do seed (5 residentes etc.) e quebrariam se o dado ficasse para trás.
 
 ---
 

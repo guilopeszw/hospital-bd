@@ -83,6 +83,8 @@
         <div class="stat-card skeleton"></div>
         <div class="stat-card skeleton"></div>
         <div class="stat-card skeleton"></div>
+        <div class="stat-card skeleton"></div>
+        <div class="stat-card skeleton"></div>
       </div>
 
       <div class="panel">
@@ -130,7 +132,10 @@
     <!--ESCALAS -->
     <section class="view" id="view-escalas">
       <div class="panel">
-        <div class="panel__head"><h2>Escala semanal de plantões</h2></div>
+        <div class="panel__head">
+          <h2>Escala semanal de plantões</h2>
+          <button class="btn btn--primary" id="btn-nova-escala">+ Nova escala</button>
+        </div>
         <div class="table-wrap" id="tabela-escalas"><p class="muted">Carregando…</p></div>
       </div>
     </section>
@@ -157,6 +162,21 @@
         <div class="panel">
           <div class="panel__head"><h2>Sem procedimento de risco alto</h2><span class="tag">pacientes</span></div>
           <div class="table-wrap" id="sem-risco-alto"><p class="muted">Carregando…</p></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__head"><h2>Tempo médio de espera</h2><span class="tag">chegada → 1º procedimento, por unidade</span></div>
+          <div class="table-wrap" id="tempo-medio-espera"><p class="muted">Carregando…</p></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__head"><h2>Pacientes internados</h2><span class="tag">vw_pacientes_internados</span></div>
+          <div class="table-wrap" id="pacientes-internados"><p class="muted">Carregando…</p></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__head"><h2>Residentes sem supervisor</h2><span class="tag">vw_residentes_sem_supervisor</span></div>
+          <div class="table-wrap" id="residentes-sem-supervisor"><p class="muted">Carregando…</p></div>
         </div>
 
       </div>
@@ -221,6 +241,46 @@
       <div class="modal__actions">
         <button type="button" class="btn" data-close-modal>Cancelar</button>
         <button type="submit" class="btn btn--primary">Registrar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!--MODAL: nova escala -->
+<div class="modal" id="modal-escala">
+  <div class="modal__card">
+    <div class="modal__head">
+      <h3>Nova escala de plantão</h3>
+      <button class="modal__close" data-close-modal>&times;</button>
+    </div>
+    <form id="form-escala">
+      <label>Unidade
+        <select required name="id_unidade" class="input" id="select-escala-unidade"></select>
+      </label>
+      <label>Residente
+        <select required name="id_residente" class="input" id="select-escala-residente"></select>
+      </label>
+      <label>Preceptor
+        <select required name="id_preceptor" class="input" id="select-escala-preceptor"></select>
+      </label>
+      <label>Dia da semana
+        <select required name="dia_semana" class="input">
+          <option value="segunda">Segunda</option><option value="terca">Terça</option>
+          <option value="quarta">Quarta</option><option value="quinta">Quinta</option>
+          <option value="sexta">Sexta</option><option value="sabado">Sábado</option>
+          <option value="domingo">Domingo</option>
+        </select>
+      </label>
+      <label>Turno
+        <select required name="turno" class="input">
+          <option value="manha">Manhã</option><option value="tarde">Tarde</option><option value="noite">Noite</option>
+        </select>
+      </label>
+      <p class="muted" style="font-size:.8rem">O mesmo residente não pode ficar escalado em duas unidades no mesmo dia/turno — regra garantida por trigger no banco (<code>trg_check_sobreposicao_escala</code>).</p>
+      <div class="modal__error" id="erro-escala"></div>
+      <div class="modal__actions">
+        <button type="button" class="btn" data-close-modal>Cancelar</button>
+        <button type="submit" class="btn btn--primary">Salvar escala</button>
       </div>
     </form>
   </div>

@@ -94,13 +94,24 @@ O enunciado permite CLI, web ou desktop como front-end. Foi construída uma API 
 Flask (`webapp/api/app.py`) sobre o mesmo Postgres da CLI/ORM, e um painel estático em
 HTML/CSS/JS puro (`webapp/frontend/`), sem framework.
 
-- [x] API Flask com rotas de dashboard, CRUD de pacientes/atendimentos, listagens de apoio
-  (unidades/procedimentos/escalas/profissionais) e os 5 indicadores analíticos da Etapa 1.
+- [x] API Flask com CRUD completo (pacientes, profissionais, unidades, atendimentos,
+  procedimentos realizados, escalas, faturamento) e os 6 indicadores analíticos da Etapa 1/2.
 - [x] Painel web consumindo a API, com correção de XSS armazenado (helper `esc()` escapando
-  toda saída derivada da API antes de ir para o DOM).
-- [x] Persistência ponta a ponta verificada: `POST /api/pacientes` e `POST /api/atendimentos`
-  gravam no Postgres e sobrevivem a restart da API.
-- Documentação completa (rotas, como rodar, decisões de segurança): [`05-aplicacao/04-webapp.md`](05-aplicacao/04-webapp.md).
+  toda saída derivada da API antes de ir para o DOM) e um bug de variável sombreada corrigido
+  (`carregarEscalas` usava `esc` como nome de variável local, quebrando a chamada à função
+  global `esc()` de escape).
+- [x] Persistência ponta a ponta verificada (curl manual + 34 testes automatizados):
+  todo `POST`/`PUT`/`DELETE` grava no Postgres e sobrevive a restart da API.
+- [x] **Backend usa de verdade os artefatos da Etapa 2**, não só a CLI/ORM: as 3 views têm
+  rota própria (`/api/views/*`, 2 delas alimentam o dashboard), `sp_registrar_atendimento_completo`
+  e `sp_reajustar_escala` são chamadas via `POST /atendimentos` e `POST /escalas/reajustar`,
+  `sp_calcular_tempo_medio_espera` vira `/api/analytics/tempo-medio-espera`, e `POST /escalas` /
+  `POST /atendimentos/<id>/procedimentos` disparam os 2 triggers que antes só a CLI exercitava.
+- **Bug real corrigido nesse trabalho**: as rotas de procedure com efeito colateral usavam o
+  helper `query()` (só `SELECT`, nunca comita) — o `INSERT`/`UPDATE` feito dentro da function
+  rodava e era descartado ao fechar a conexão; a API respondia sucesso com nada persistido.
+  Corrigido trocando para `execute()` (que comita) nessas duas rotas.
+- Documentação completa (rotas, como rodar, decisões de segurança, o bug e a correção): [`05-aplicacao/04-webapp.md`](05-aplicacao/04-webapp.md).
 
 ---
 

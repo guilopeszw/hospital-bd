@@ -7,6 +7,7 @@ Como rodar:
     # (porta 5055 e não 5000: no macOS o AirPlay ocupa a 5000)
 """
 
+import json
 import os
 from datetime import datetime, date, timedelta
 
@@ -110,6 +111,13 @@ def dashboard_summary():
         one=True,
     )["n"]
 
+    # Os dois campos abaixo vêm das views da Etapa 2 (vw_pacientes_internados,
+    # vw_residentes_sem_supervisor) em vez de reimplementar a consulta aqui.
+    pacientes_internados = query("SELECT COUNT(*) AS n FROM vw_pacientes_internados", one=True)["n"]
+    residentes_sem_supervisor = query(
+        "SELECT COUNT(DISTINCT id_residente) AS n FROM vw_residentes_sem_supervisor", one=True
+    )["n"]
+
     return jsonify({
         "total_pacientes": total_pacientes,
         "total_profissionais": total_profissionais,
@@ -117,6 +125,8 @@ def dashboard_summary():
         "plantoes_hoje": plantoes_hoje,
         "faturamento_mes": float(faturamento_mes),
         "pacientes_sem_risco_alto": pacientes_risco_alto_pendente,
+        "pacientes_internados": pacientes_internados,
+        "residentes_sem_supervisor": residentes_sem_supervisor,
     })
 
 
@@ -181,6 +191,29 @@ def criar_paciente():
         conn.close()
 
 
+@app.route("/api/pacientes/<id_paciente>", methods=["PUT"])
+def atualizar_paciente(id_paciente):
+    dados = request.get_json(force=True)
+    if not query("SELECT 1 FROM PACIENTE WHERE id_pessoa = %s", (id_paciente,), one=True):
+        return api_error("Paciente não encontrado.", 404)
+    try:
+        resultado = execute(
+            """
+            UPDATE PACIENTE
+               SET num_convenio    = COALESCE(%s, num_convenio),
+                   alergias        = COALESCE(%s, alergias),
+                   grupo_sanguineo = COALESCE(%s, grupo_sanguineo)
+             WHERE id_pessoa = %s
+            RETURNING id_pessoa
+            """,
+            (dados.get("num_convenio"), dados.get("alergias"), dados.get("grupo_sanguineo"), id_paciente),
+            returning=True,
+        )
+        return jsonify(resultado)
+    except psycopg2.Error as e:
+        return api_error(f"Erro ao atualizar paciente: {e.pgerror or str(e)}", 400)
+
+
 @app.route("/api/pacientes/<id_paciente>/atendimentos")
 def atendimentos_do_paciente(id_paciente):
     sql = """
@@ -214,6 +247,56 @@ def listar_profissionais():
     return jsonify(query(sql))
 
 
+@app.route("/api/profissionais", methods=["POST"])
+def cadastrar_profissional():
+    dados = request.get_json(force=True)
+    tipo = dados.get("tipo")
+    if tipo not in ("residente", "preceptor"):
+        return api_error("Campo 'tipo' deve ser 'residente' ou 'preceptor'.")
+    obrigatorios = ["nome", "cpf", "data_nascimento", "crm", "data_admissao", "especialidade"]
+    if tipo == "residente":
+        obrigatorios.append("ano_residencia")
+    else:
+        obrigatorios.append("titulacao")
+    faltando = [c for c in obrigatorios if not dados.get(c)]
+    if faltando:
+        return api_error(f"Campos obrigatórios ausentes: {', '.join(faltando)}")
+
+    conn = get_connection()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "INSERT INTO PESSOA (nome, cpf, data_nascimento) VALUES (%s, %s, %s) RETURNING id_pessoa",
+                (dados["nome"], dados["cpf"], dados["data_nascimento"]),
+            )
+            id_pessoa = cur.fetchone()["id_pessoa"]
+            cur.execute(
+                """INSERT INTO PROFISSIONAL (id_pessoa, crm, data_admissao, especialidade, papel_atual)
+                   VALUES (%s, %s, %s, %s, %s)""",
+                (id_pessoa, dados["crm"], dados["data_admissao"], dados["especialidade"], tipo),
+            )
+            if tipo == "residente":
+                cur.execute(
+                    "INSERT INTO RESIDENTE (id_pessoa, ano_residencia) VALUES (%s, %s)",
+                    (id_pessoa, dados["ano_residencia"]),
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO PRECEPTOR (id_pessoa, titulacao) VALUES (%s, %s)",
+                    (id_pessoa, dados["titulacao"]),
+                )
+            conn.commit()
+            return jsonify({"id_pessoa": id_pessoa}), 201
+    except psycopg2.errors.UniqueViolation:
+        conn.rollback()
+        return api_error("Já existe um profissional cadastrado com esse CPF.", 409)
+    except psycopg2.Error as e:
+        conn.rollback()
+        return api_error(f"Erro ao cadastrar profissional: {e.pgerror or str(e)}", 400)
+    finally:
+        conn.close()
+
+
 # Atendimentos
 
 @app.route("/api/atendimentos", methods=["GET"])
@@ -237,6 +320,11 @@ def listar_atendimentos():
 
 @app.route("/api/atendimentos", methods=["POST"])
 def criar_atendimento():
+    """Registra um atendimento. Se o body trouxer `procedimentos` (lista),
+    delega para a stored procedure `sp_registrar_atendimento_completo`
+    (Etapa 2 — item 1): atendimento + procedimentos numa transação só,
+    com rollback automático se qualquer item falhar. Sem `procedimentos`,
+    cai no INSERT direto de sempre (atendimento sozinho)."""
     dados = request.get_json(force=True)
     obrigatorios = ["data_hora", "duracao_minutos", "id_paciente", "id_residente", "id_preceptor", "id_unidade"]
     faltando = [c for c in obrigatorios if not dados.get(c)]
@@ -250,20 +338,141 @@ def criar_atendimento():
     if not query("SELECT 1 FROM UNIDADE WHERE id_unidade = %s", (dados["id_unidade"],), one=True):
         return api_error("Unidade não encontrada.", 404)
 
+    procedimentos = dados.get("procedimentos")
     try:
-        resultado = execute(
-            """
-            INSERT INTO ATENDIMENTO (data_hora, duracao_minutos, id_paciente, id_residente, id_preceptor, id_unidade)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            RETURNING id_atendimento
-            """,
-            (dados["data_hora"], dados["duracao_minutos"], dados["id_paciente"],
-             dados["id_residente"], dados["id_preceptor"], dados["id_unidade"]),
-            returning=True,
-        )
+        if procedimentos:
+            # execute(), não query(): a function faz INSERT por dentro
+            # (atendimento + procedimentos), query() nunca comita e o
+            # efeito seria descartado ao fechar a conexão.
+            resultado = execute(
+                "SELECT sp_registrar_atendimento_completo(%s, %s, %s, %s, %s, %s, %s::jsonb) AS id_atendimento",
+                (dados["data_hora"], dados["duracao_minutos"], dados["id_paciente"],
+                 dados["id_residente"], dados["id_preceptor"], dados["id_unidade"],
+                 json.dumps(procedimentos)),
+                returning=True,
+            )
+        else:
+            resultado = execute(
+                """
+                INSERT INTO ATENDIMENTO (data_hora, duracao_minutos, id_paciente, id_residente, id_preceptor, id_unidade)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                RETURNING id_atendimento
+                """,
+                (dados["data_hora"], dados["duracao_minutos"], dados["id_paciente"],
+                 dados["id_residente"], dados["id_preceptor"], dados["id_unidade"]),
+                returning=True,
+            )
         return jsonify(resultado), 201
     except psycopg2.Error as e:
         return api_error(f"Erro ao registrar atendimento: {e.pgerror or str(e)}", 400)
+
+
+@app.route("/api/atendimentos/<id_atendimento>/procedimentos", methods=["GET"])
+def listar_procedimentos_atendimento(id_atendimento):
+    sql = """
+        SELECT pr.id_procedimento, p.nome AS procedimento, p.nivel_risco,
+               pr.quantidade, pr.tempo_real_minutos, pr.data_hora_inicio, pr.observacao,
+               EXISTS (
+                   SELECT 1 FROM FATURAMENTO f
+                   WHERE f.id_atendimento = pr.id_atendimento AND f.id_procedimento = pr.id_procedimento
+               ) AS faturado
+        FROM PROCEDIMENTO_REALIZADO pr
+        JOIN PROCEDIMENTO p ON p.id_procedimento = pr.id_procedimento
+        WHERE pr.id_atendimento = %s
+        ORDER BY pr.data_hora_inicio
+    """
+    return jsonify(query(sql, (id_atendimento,)))
+
+
+@app.route("/api/atendimentos/<id_atendimento>/procedimentos", methods=["POST"])
+def registrar_procedimento(id_atendimento):
+    """INSERT em PROCEDIMENTO_REALIZADO — dispara automaticamente o
+    trigger trg_atualiza_media_procedimentos (Etapa 2 — item 2), que
+    recalcula PROCEDIMENTO.media_tempo_procedimento."""
+    dados = request.get_json(force=True)
+    obrigatorios = ["id_procedimento", "tempo_real_minutos", "data_hora_inicio"]
+    faltando = [c for c in obrigatorios if not dados.get(c)]
+    if faltando:
+        return api_error(f"Campos obrigatórios ausentes: {', '.join(faltando)}")
+
+    if not query("SELECT 1 FROM ATENDIMENTO WHERE id_atendimento = %s", (id_atendimento,), one=True):
+        return api_error("Atendimento não encontrado.", 404)
+    if not query("SELECT 1 FROM PROCEDIMENTO WHERE id_procedimento = %s", (dados["id_procedimento"],), one=True):
+        return api_error("Procedimento não encontrado.", 404)
+
+    try:
+        execute(
+            """
+            INSERT INTO PROCEDIMENTO_REALIZADO
+                (id_atendimento, id_procedimento, quantidade, tempo_real_minutos, data_hora_inicio, observacao)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """,
+            (id_atendimento, dados["id_procedimento"], dados.get("quantidade", 1),
+             dados["tempo_real_minutos"], dados["data_hora_inicio"], dados.get("observacao")),
+        )
+        return jsonify({"id_atendimento": id_atendimento, "id_procedimento": dados["id_procedimento"]}), 201
+    except psycopg2.errors.UniqueViolation:
+        return api_error("Esse procedimento já foi registrado nesse atendimento.", 409)
+    except psycopg2.Error as e:
+        return api_error(f"Erro ao registrar procedimento: {e.pgerror or str(e)}", 400)
+
+
+@app.route("/api/atendimentos/<id_atendimento>/procedimentos/<id_procedimento>", methods=["DELETE"])
+def remover_procedimento_realizado(id_atendimento, id_procedimento):
+    """Bloqueado se já houver faturamento associado — mesma regra da CLI
+    (Etapa 1, item 3) e do ORM (crud_orm.remover_procedimento_realizado)."""
+    tem_faturamento = query(
+        "SELECT 1 FROM FATURAMENTO WHERE id_atendimento = %s AND id_procedimento = %s",
+        (id_atendimento, id_procedimento), one=True,
+    )
+    if tem_faturamento:
+        return api_error("Procedimento já faturado — remoção bloqueada.", 409)
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM PROCEDIMENTO_REALIZADO WHERE id_atendimento = %s AND id_procedimento = %s",
+                (id_atendimento, id_procedimento),
+            )
+            apagadas = cur.rowcount
+            conn.commit()
+    finally:
+        conn.close()
+
+    if apagadas == 0:
+        return api_error("Procedimento realizado não encontrado.", 404)
+    return "", 204
+
+
+# Faturamento
+
+
+@app.route("/api/faturamentos", methods=["POST"])
+def criar_faturamento():
+    dados = request.get_json(force=True)
+    obrigatorios = ["id_atendimento", "id_procedimento", "valor"]
+    faltando = [c for c in obrigatorios if not dados.get(c)]
+    if faltando:
+        return api_error(f"Campos obrigatórios ausentes: {', '.join(faltando)}")
+
+    try:
+        resultado = execute(
+            """
+            INSERT INTO FATURAMENTO (id_atendimento, id_procedimento, valor)
+            VALUES (%s, %s, %s)
+            RETURNING id_faturamento
+            """,
+            (dados["id_atendimento"], dados["id_procedimento"], dados["valor"]),
+            returning=True,
+        )
+        return jsonify(resultado), 201
+    except psycopg2.errors.UniqueViolation:
+        return api_error("Esse procedimento realizado já foi faturado.", 409)
+    except psycopg2.errors.ForeignKeyViolation:
+        return api_error("Atendimento/procedimento realizado não encontrado.", 404)
+    except psycopg2.Error as e:
+        return api_error(f"Erro ao faturar: {e.pgerror or str(e)}", 400)
 
 # Unidades, procedimentos e escalas
 
@@ -272,9 +481,87 @@ def listar_unidades():
     return jsonify(query("SELECT * FROM UNIDADE ORDER BY nome"))
 
 
+@app.route("/api/unidades", methods=["POST"])
+def cadastrar_unidade():
+    dados = request.get_json(force=True)
+    obrigatorios = ["nome", "tipo", "capacidade_leitos"]
+    faltando = [c for c in obrigatorios if dados.get(c) is None]
+    if faltando:
+        return api_error(f"Campos obrigatórios ausentes: {', '.join(faltando)}")
+    try:
+        resultado = execute(
+            "INSERT INTO UNIDADE (nome, tipo, capacidade_leitos) VALUES (%s, %s, %s) RETURNING id_unidade",
+            (dados["nome"], dados["tipo"], dados["capacidade_leitos"]),
+            returning=True,
+        )
+        return jsonify(resultado), 201
+    except psycopg2.Error as e:
+        return api_error(f"Erro ao cadastrar unidade: {e.pgerror or str(e)}", 400)
+
+
 @app.route("/api/procedimentos")
 def listar_procedimentos():
     return jsonify(query("SELECT * FROM PROCEDIMENTO ORDER BY nome"))
+
+
+@app.route("/api/escalas", methods=["POST"])
+def cadastrar_escala():
+    """INSERT em ESCALA — dispara trg_check_sobreposicao_escala (Etapa 2 —
+    item 2): barra o mesmo residente em duas unidades no mesmo dia/turno."""
+    dados = request.get_json(force=True)
+    obrigatorios = ["id_unidade", "dia_semana", "turno", "id_residente", "id_preceptor"]
+    faltando = [c for c in obrigatorios if not dados.get(c)]
+    if faltando:
+        return api_error(f"Campos obrigatórios ausentes: {', '.join(faltando)}")
+    try:
+        resultado = execute(
+            """INSERT INTO ESCALA (id_unidade, dia_semana, turno, id_residente, id_preceptor)
+               VALUES (%s, %s, %s, %s, %s) RETURNING id_escala""",
+            (dados["id_unidade"], dados["dia_semana"], dados["turno"],
+             dados["id_residente"], dados["id_preceptor"]),
+            returning=True,
+        )
+        return jsonify(resultado), 201
+    except psycopg2.errors.UniqueViolation:
+        return api_error("Esse residente já está escalado nesse dia/turno/unidade.", 409)
+    except psycopg2.errors.RaiseException as e:
+        # Levantado pelo trigger trg_check_sobreposicao_escala. diag.message_primary
+        # é só a mensagem do RAISE, sem o CONTEXT/traceback do PL/pgSQL.
+        return api_error(e.diag.message_primary or str(e).splitlines()[0], 409)
+    except psycopg2.Error as e:
+        return api_error(f"Erro ao cadastrar escala: {e.pgerror or str(e)}", 400)
+
+
+@app.route("/api/escalas/reajustar", methods=["POST"])
+def reajustar_escala():
+    """Chama a stored procedure sp_reajustar_escala (Etapa 2 — item 1):
+    move todas as escalas de um residente de um slot pra outro numa
+    transação só, com rollback se colidir."""
+    dados = request.get_json(force=True)
+    obrigatorios = ["id_residente", "dia_origem", "turno_origem", "dia_destino", "turno_destino"]
+    faltando = [c for c in obrigatorios if not dados.get(c)]
+    if faltando:
+        return api_error(f"Campos obrigatórios ausentes: {', '.join(faltando)}")
+    try:
+        # execute(), não query(): a function faz UPDATE por dentro; query()
+        # nunca comita e o reajuste seria descartado ao fechar a conexão.
+        resultado = execute(
+            """SELECT sp_reajustar_escala(
+                   %s, %s::dia_semana_enum, %s::turno_enum,
+                   %s::dia_semana_enum, %s::turno_enum
+               ) AS escalas_movidas""",
+            (dados["id_residente"], dados["dia_origem"], dados["turno_origem"],
+             dados["dia_destino"], dados["turno_destino"]),
+            returning=True,
+        )
+        return jsonify(resultado)
+    except psycopg2.errors.RaiseException as e:
+        # Pode vir da própria sp_reajustar_escala (conflito na unidade de
+        # destino) ou do trigger trg_check_sobreposicao_escala (conflito
+        # entre unidades diferentes) — message_primary cobre os dois.
+        return api_error(e.diag.message_primary or str(e).splitlines()[0], 409)
+    except psycopg2.Error as e:
+        return api_error(f"Erro ao reajustar escala: {e.pgerror or str(e)}", 400)
 
 
 @app.route("/api/escalas")
@@ -376,6 +663,30 @@ def analytics_pacientes_sem_risco_alto():
         ORDER BY p.nome
     """
     return jsonify(query(sql))
+
+
+@app.route("/api/analytics/tempo-medio-espera")
+def analytics_tempo_medio_espera():
+    """Chama a stored procedure sp_calcular_tempo_medio_espera (Etapa 2 —
+    item 1): tempo médio entre chegada e 1º procedimento, por unidade."""
+    return jsonify(query("SELECT * FROM sp_calcular_tempo_medio_espera()"))
+
+
+# Views (Etapa 2 — item 3)
+
+@app.route("/api/views/pacientes-internados")
+def views_pacientes_internados():
+    return jsonify(query("SELECT * FROM vw_pacientes_internados"))
+
+
+@app.route("/api/views/residentes-sem-supervisor")
+def views_residentes_sem_supervisor():
+    return jsonify(query("SELECT * FROM vw_residentes_sem_supervisor"))
+
+
+@app.route("/api/views/estatisticas-mensais")
+def views_estatisticas_mensais():
+    return jsonify(query("SELECT * FROM vw_estatisticas_atendimentos_mensal"))
 
 
 @app.route("/api/analytics/tempo-medio-residente")
