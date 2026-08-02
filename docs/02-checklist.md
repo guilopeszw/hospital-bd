@@ -17,7 +17,7 @@
 
 ## 2. Implementação do BD
 
-- [x] DDL completo em `../sql/ddl/01`–`12`, todos UUID, com PK/FK/CHECK/UNIQUE/NOT NULL.
+- [x] DDL completo em `../sql/ddl/01`–`14`, todos UUID, com PK/FK/CHECK/UNIQUE/NOT NULL.
 - [x] Seeds acima do mínimo exigido: 5 pacientes, 5 preceptores, 5 residentes, 3 unidades, 10 procedimentos, **16 atendimentos**, **18 procedimentos realizados**, 8 escalas, 3 faturamentos.
 - [x] Volume de seed **calibrado para as consultas analíticas não voltarem vazias**: Dr. Jorge Jesus tem 8 atendimentos em junho/2025 (aparece no `HAVING > 5`) e Dra. Yuska tem exatamente 5 (não aparece — mostra o limite funcionando).
 
@@ -50,7 +50,7 @@ Todas rodadas contra o banco populado; resultados conferidos:
 
 ## Testes automatizados — 16 passando
 
-- `../tests/conftest.py` recria o schema do zero a cada sessão (`DROP SCHEMA public CASCADE` + DDL `01`–`12`). Como isso apaga os seeds, refaça o passo 2 do README antes de demonstrar a CLI.
+- `../tests/conftest.py` recria o schema do zero a cada sessão (`DROP SCHEMA public CASCADE` + DDL `01`–`14`). Como isso apaga os seeds, refaça o passo 2 do README antes de demonstrar a CLI.
 - `../tests/unit/test_core_entities.py` (5): CPF único, regex de CPF, grupo sanguíneo, default de `is_flamengo`.
 - `../tests/unit/test_negocio.py` (11): FK de Atendimento, UNIQUE de Escala, mesmo preceptor com residentes diferentes, enum de `nivel_risco`, CHECK de `capacidade_leitos`, os 4 casos de faturamento (bloqueia delete, FK RESTRICT, permite delete sem faturamento, não fatura duas vezes) e os 2 de exclusividade de papel.
 

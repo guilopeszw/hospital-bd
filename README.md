@@ -12,6 +12,7 @@
 - [O que o Projeto Cobre](#o-que-o-projeto-cobre)
   - [Etapa 1 — Fundamentos (SQL Puro)](#etapa-1--fundamentos-sql-puro)
   - [Etapa 2 — Funcionalidades Avançadas](#etapa-2--funcionalidades-avançadas)
+  - [Webapp — API Flask + Painel Web](#webapp--api-flask--painel-web)
 - [Stack Tecnológica](#stack-tecnológica)
 - [Dependências e Instalação](#dependências-e-instalação)
   - [Linux (Ubuntu/Debian)](#linux-ubuntudebian)
@@ -23,6 +24,7 @@
   - [3. Instalar Dependências Python](#3-instalar-dependências-python)
   - [4. Rodar os Testes](#4-rodar-os-testes)
   - [5. Usar a CLI](#5-usar-a-cli)
+  - [6. Rodar o Webapp](#6-rodar-o-webapp)
 - [Estrutura do Repositório](#estrutura-do-repositório)
 - [Documentação](#documentação)
 - [Equipe — Contribuidores](#equipe--contribuidores)
@@ -57,13 +59,27 @@ Dividido em duas etapas de complexidade crescente:
 
 ### Etapa 2 — Funcionalidades Avançadas
 
-> *Em desenvolvimento — previsão de início após conclusão da Etapa 1.*
+- **Stored procedures** com transações: registro completo de atendimento (rollback verificado),
+  cálculo de tempo médio de espera por unidade, reajuste de escala com checagem de conflito.
+- **Triggers**: bloqueio de sobreposição de escala, auditoria de atendimentos
+  (tabela `AUDITORIA_ATENDIMENTO`), atualização automática da média de duração por procedimento.
+- **Views** analíticas: pacientes internados, residentes sem supervisor qualificado,
+  estatísticas mensais de atendimento por unidade.
+- **ORM (SQLAlchemy 2.x)**: modelos completos + reimplementação das operações da Etapa 1 com
+  sessões/transações, demonstrando eager (`selectinload`) vs lazy loading. Alembic ainda não
+  instalado — migração de schema é feita rodando o DDL completo.
+- **Consultas avançadas via ORM**: preceptores que supervisionaram residentes com pacientes
+  flamenguistas, último atendimento por paciente, % de procedimentos de alto risco por residente.
+- **Concorrência**: duas transações concorrentes disputando a mesma escala, serializadas com
+  lock pessimista (`SELECT ... FOR UPDATE`).
 
-- Stored procedures com transações (registro completo de atendimento, reajuste de escala).
-- Triggers (controle de sobreposição de escala, auditoria de atendimentos, atualização de médias).
-- Views analíticas (pacientes internados, residentes sem supervisor, estatísticas mensais).
-- Migração para **SQLAlchemy 2.x** com Alembic.
-- Consultas avançadas via ORM e tratamento de concorrência com locks.
+### Webapp — API Flask + Painel Web
+
+Front-end opcional sobre o mesmo Postgres da CLI/ORM: API REST em Flask
+(`webapp/api/app.py`) e painel estático em HTML/CSS/JS puro, sem framework
+(`webapp/frontend/`). Cobre dashboard, CRUD de pacientes/atendimentos e os 5 indicadores
+analíticos da Etapa 1, com persistência ponta a ponta verificada e correção de XSS
+armazenado no front. Detalhes em [`docs/05-aplicacao/04-webapp.md`](docs/05-aplicacao/04-webapp.md).
 
 ---
 
@@ -74,7 +90,8 @@ Dividido em duas etapas de complexidade crescente:
 | Banco       | PostgreSQL 16 (Alpine)                              |
 | Linguagem   | Python 3.12+                                        |
 | Conector    | psycopg2 2.9                                        |
-| ORM (Etapa 2) | SQLAlchemy 2.x + Alembic                          |
+| ORM (Etapa 2) | SQLAlchemy 2.x (Alembic ainda não instalado)      |
+| Webapp      | Flask + flask-cors (API) · HTML/CSS/JS puro (front) |
 | Testes      | pytest                                              |
 | Container   | Docker + Docker Compose                             |
 | Modelagem   | Mermaid (DER)                                       |
@@ -160,15 +177,15 @@ PostgreSQL fica disponível em:
 
 Para parar: `docker compose down`
 
-### 2. Popular o Banco (DDL + Seeds)
+### 2. Popular o Banco (DDL + Seeds + Etapa 2)
 
 ```bash
-for f in sql/ddl/*.sql sql/dml/*.sql; do
+for f in sql/ddl/*.sql sql/dml/*.sql sql/procedures/*.sql sql/triggers/*.sql sql/views/*.sql; do
   psql "postgresql://postgres:password@localhost:5433/hospital_db" -f "$f"
 done
 ```
 
-> **Nota:** Os arquivos DDL (`sql/ddl/01`–`12`) e DML (`sql/dml/01`–`07`) são numerados por dependência. O laço `for` respeita a ordem alfabética/numérica automaticamente.
+> **Nota:** DDL (`sql/ddl/01`–`14`) e DML (`sql/dml/01`–`08`) são numerados por dependência; o laço `for` respeita a ordem alfabética/numérica automaticamente. As procedures/triggers/views são da Etapa 2 — só a CLI da Etapa 1 (`atendimento_crud.py`) funciona sem elas; ORM, consultas avançadas, concorrência e o webapp esperam o schema completo.
 
 ### 3. Instalar Dependências Python
 
@@ -180,7 +197,7 @@ source .venv/bin/activate   # Linux/macOS
 pip install -r requirements.txt
 ```
 
-Dependências: `psycopg2` (conector PostgreSQL) e `pytest` (testes).
+Dependências: `psycopg2` (conector PostgreSQL), `sqlalchemy` (ORM da Etapa 2) e `pytest` (testes). O webapp tem dependências próprias em `webapp/api/requirements.txt` (Flask + flask-cors).
 
 ### 4. Rodar os Testes
 
@@ -275,6 +292,22 @@ python -m src.etapa1.atendimento_crud faturar <id_atendimento> <id_procedimento>
 > python -m src.etapa1.atendimento_crud inserir-atendimento --help
 > ```
 
+### 6. Rodar o Webapp
+
+```bash
+# 1. Banco no ar + schema/seeds (passos 1 e 2 acima)
+
+# 2. API
+cd webapp/api
+pip install -r requirements.txt
+DATABASE_URL="dbname=hospital_db user=postgres password=password host=localhost port=5433" python app.py
+# sobe em http://localhost:5055 (env PORT sobrescreve)
+
+# 3. Front: abrir webapp/frontend/index.html no navegador
+```
+
+Detalhes de rotas e decisões de segurança: [`docs/05-aplicacao/04-webapp.md`](docs/05-aplicacao/04-webapp.md).
+
 ---
 
 ## Estrutura do Repositório
@@ -284,12 +317,26 @@ hospital-bd/
 ├── docker/
 │   └── docker-compose.yml          # PostgreSQL 16 em container
 ├── sql/
-│   ├── ddl/                        # CREATE TABLE (numerado: 01_enums.sql → 12_faturamento.sql)
-│   ├── dml/                        # Seeds (01_pacientes → 07_faturamento)
-│   └── queries/                    # Consultas SQL puras (CRUD + analíticas)
+│   ├── ddl/                        # CREATE TABLE (numerado: 01_enums.sql → 14_internacao.sql)
+│   ├── dml/                        # Seeds (01_pacientes → 08_internacao)
+│   ├── queries/                    # Consultas SQL puras (CRUD + analíticas)
+│   ├── procedures/                 # Stored procedures (Etapa 2)
+│   ├── triggers/                   # Triggers (Etapa 2)
+│   └── views/                      # Views analíticas (Etapa 2)
 ├── src/
-│   └── etapa1/
-│       └── atendimento_crud.py     # CLI + funções CRUD (psycopg2)
+│   ├── etapa1/
+│   │   ├── atendimento_crud.py     # CLI + funções CRUD (psycopg2)
+│   │   └── cli_interactive.py      # CLI em modo menu interativo
+│   └── etapa2/
+│       ├── models.py               # Modelos SQLAlchemy 2.0
+│       ├── crud_orm.py             # Operações da Etapa 1 via ORM
+│       ├── consultas_avancadas.py  # Consultas avançadas via ORM
+│       └── concorrencia.py         # Cenário de concorrência com lock pessimista
+├── webapp/
+│   ├── api/
+│   │   └── app.py                  # API REST Flask sobre o Postgres
+│   └── frontend/
+│       └── index.html + css/ + js/ # Painel HTML/CSS/JS puro
 ├── tests/
 │   ├── conftest.py                 # Fixture: schema isolado por sessão
 │   └── unit/
@@ -298,20 +345,29 @@ hospital-bd/
 ├── docs/
 │   ├── 00-especificacao.md         # Especificação completa do projeto
 │   ├── 01-plano-de-trabalho.md     # Planejamento e backlog
-│   ├── 02-checklist.md             # Progresso detalhado da Etapa 1
+│   ├── 02-checklist.md             # Progresso detalhado (Etapa 1 e Etapa 2)
 │   ├── 03-modelagem/
-│   │   ├── 01-der.md               # DER em Mermaid
-│   │   └── 02-normalizacao.md      # Prova formal de normalização até 3FN
+│   │   ├── 01-der.md                            # DER em Mermaid
+│   │   ├── 02-normalizacao.md                   # Prova formal de normalização até 3FN
+│   │   ├── 03-justificativa_cardinalidades.md   # Justificativa de cardinalidades do DER
+│   │   └── 04-diagrama.png                      # DER exportado em imagem
 │   ├── 04-banco/
 │   │   ├── 01-ddl.md               # CREATE TABLE e constraints
 │   │   ├── 02-dml.md               # Seeds e dados de teste
-│   │   └── 03-queries.md           # CRUD + consultas analíticas
+│   │   ├── 03-queries.md           # CRUD + consultas analíticas
+│   │   ├── 04-procedures.md        # Stored procedures (Etapa 2)
+│   │   ├── 05-views.md             # Views analíticas (Etapa 2)
+│   │   └── 06-triggers.md          # Triggers (Etapa 2)
 │   ├── 05-aplicacao/
 │   │   ├── 01-cli.md               # CLI reference
-│   │   └── 02-testes.md            # Testes automatizados
+│   │   ├── 02-testes.md            # Testes automatizados
+│   │   ├── 03-orm.md               # ORM SQLAlchemy (Etapa 2)
+│   │   ├── 04-webapp.md            # API Flask + painel web
+│   │   ├── 05-consultas_avancadas.md  # Consultas avançadas via ORM (Etapa 2)
+│   │   └── 06-concorrencia.md      # Concorrência e locks (Etapa 2)
 │   └── 06-infraestrutura/
 │       └── 01-docker.md            # Docker PostgreSQL
-├── requirements.txt                # Dependências Python
+├── requirements.txt                # Dependências Python (Etapa 1 + Etapa 2)
 └── README.md                       # Este arquivo
 ```
 
@@ -323,14 +379,22 @@ hospital-bd/
 |-----------|-----------|
 | [`docs/00-especificacao.md`](docs/00-especificacao.md) | Especificação completa do projeto (requisitos Etapas 1 e 2) |
 | [`docs/01-plano-de-trabalho.md`](docs/01-plano-de-trabalho.md) | Planejamento operacional, backlog e estratégia |
-| [`docs/02-checklist.md`](docs/02-checklist.md) | Progresso detalhado da Etapa 1 + decisões de modelagem |
+| [`docs/02-checklist.md`](docs/02-checklist.md) | Progresso detalhado — Etapa 1 e Etapa 2 |
 | [`docs/03-modelagem/01-der.md`](docs/03-modelagem/01-der.md) | Diagrama Entidade-Relacionamento (Mermaid) |
 | [`docs/03-modelagem/02-normalizacao.md`](docs/03-modelagem/02-normalizacao.md) | Prova formal de normalização até 3FN |
+| [`docs/03-modelagem/03-justificativa_cardinalidades.md`](docs/03-modelagem/03-justificativa_cardinalidades.md) | Justificativa de cardinalidade e participação de cada relacionamento |
 | [`docs/04-banco/01-ddl.md`](docs/04-banco/01-ddl.md) | DDL — definição do esquema, enums e constraints |
 | [`docs/04-banco/02-dml.md`](docs/04-banco/02-dml.md) | DML — seeds e dados de teste |
 | [`docs/04-banco/03-queries.md`](docs/04-banco/03-queries.md) | Queries — CRUD e consultas analíticas |
+| [`docs/04-banco/04-procedures.md`](docs/04-banco/04-procedures.md) | Stored procedures (Etapa 2) |
+| [`docs/04-banco/05-views.md`](docs/04-banco/05-views.md) | Views analíticas (Etapa 2) |
+| [`docs/04-banco/06-triggers.md`](docs/04-banco/06-triggers.md) | Triggers (Etapa 2) |
 | [`docs/05-aplicacao/01-cli.md`](docs/05-aplicacao/01-cli.md) | CLI — referência completa de subcomandos |
 | [`docs/05-aplicacao/02-testes.md`](docs/05-aplicacao/02-testes.md) | Testes — estrutura, fixtures e cobertura |
+| [`docs/05-aplicacao/03-orm.md`](docs/05-aplicacao/03-orm.md) | ORM SQLAlchemy — modelos, sessões, eager/lazy loading (Etapa 2) |
+| [`docs/05-aplicacao/04-webapp.md`](docs/05-aplicacao/04-webapp.md) | API Flask + painel web — rotas, segurança, como rodar |
+| [`docs/05-aplicacao/05-consultas_avancadas.md`](docs/05-aplicacao/05-consultas_avancadas.md) | Consultas avançadas via ORM (Etapa 2) |
+| [`docs/05-aplicacao/06-concorrencia.md`](docs/05-aplicacao/06-concorrencia.md) | Concorrência e locks, com log real de execução (Etapa 2) |
 | [`docs/06-infraestrutura/01-docker.md`](docs/06-infraestrutura/01-docker.md) | Docker — setup PostgreSQL |
 
 ---
