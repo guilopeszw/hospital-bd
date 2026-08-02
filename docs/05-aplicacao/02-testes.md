@@ -2,7 +2,12 @@
 
 ## Visão Geral
 
-Suite de testes com `pytest` e `psycopg2`. Cobre validação de schema, constraints e regras de negócio. Cada sessão de teste isola o schema completamente.
+Suite de testes com `pytest`. Duas camadas:
+
+- **`tests/unit/`** — SQL puro via `psycopg2` (schema/constraints/regras de negócio) e ORM via SQLAlchemy (Etapa 2: `crud_orm`, `consultas_avancadas`, `concorrencia`). 34 testes.
+- **`tests/integration/`** — API Flask do webapp via test client. 16 testes.
+
+Total: **50 testes**, todos rodando contra o Postgres real (nenhum mock de banco).
 
 **Localização:** [`../../tests/`](../../tests/)
 
@@ -12,10 +17,15 @@ Suite de testes com `pytest` e `psycopg2`. Cobre validação de schema, constrai
 
 ```
 tests/
-├── conftest.py                          # Fixtures globais
-└── unit/
-    ├── test_core_entities.py            # 5 testes (entidades base)
-    └── test_negocio.py                  # 11 testes (regras de negócio)
+├── conftest.py                              # Fixtures globais
+├── unit/
+│   ├── test_core_entities.py                # 5 testes (entidades base, SQL puro)
+│   ├── test_negocio.py                      # 11 testes (regras de negócio, SQL puro)
+│   ├── test_etapa2_orm.py                   # 11 testes (crud_orm.py)
+│   ├── test_etapa2_consultas_avancadas.py   # 4 testes (consultas_avancadas.py)
+│   └── test_etapa2_concorrencia.py          # 3 testes (concorrencia.py, threads reais)
+└── integration/
+    └── test_webapp.py                       # 16 testes (API Flask, test client)
 ```
 
 ---
@@ -28,9 +38,12 @@ Fixtures disponíveis:
 
 | Fixture | Escopo | Descrição |
 |---------|--------|-----------|
-| `setup_database` | session | Recria schema do zero |
+| `setup_database` | session | Recria schema do zero (só DDL) |
 | `db_connection` | session | Conexão única |
-| `db_cursor` | function | Cursor com ROLLBACK automático |
+| `db_cursor` | function | Cursor com ROLLBACK automático — usado pelos testes de SQL puro |
+| `seeded_db` | session | Carrega seeds + procedures + triggers + views **aditivamente** sobre o schema vazio (sem novo DROP). Usado pelos testes de ORM, consultas avançadas, concorrência e webapp — eles leem por uma conexão/engine separada da `db_cursor`, então precisam de dados de fato commitados. |
+
+**Por que dois estilos de isolamento?** Os testes de SQL puro usam ROLLBACK por teste (rápido, sem sujeira). Os testes de ORM/webapp leem através de conexões diferentes (engine SQLAlchemy, cliente Flask) que não enxergam uma transação aberta em outra conexão — por isso usam dados commitados via `seeded_db`, com asserções desenhadas para tolerar mutações de outros testes na mesma sessão (contagem antes/depois em vez de número fixo, `issuperset` em vez de igualdade onde outro teste pode ter adicionado uma linha).
 
 ---
 
@@ -62,15 +75,39 @@ Fixtures disponíveis:
 
 ---
 
+## Testes: ORM — crud_orm.py (11 testes)
+
+Cobre as operações da Etapa 1 reimplementadas via ORM: `ranking_residentes`, `tempo_medio_por_residente`, `preceptores_mais_atendimentos_mes`, `pacientes_sem_procedimento_risco_alto`, `listar_procedimentos_atendimento`, `inserir_atendimento` (feliz + FK inexistente), `listar_atendimentos_paciente`, `atualizar_paciente`, `remover_procedimento_realizado` (bloqueado/permitido).
+
+## Testes: Consultas Avançadas — consultas_avancadas.py (4 testes)
+
+Cobre os 3 itens do enunciado (preceptores que supervisionaram flamenguistas, último atendimento por paciente, % de risco alto por residente) mais uma checagem de que o "último atendimento" bate com a data mais recente real do seed.
+
+## Testes: Concorrência — concorrencia.py (3 testes)
+
+Testa `escalar_residente_com_lock` isoladamente (cria escala; rejeita slot já ocupado) e a `demo()` real com duas threads disputando o mesmo residente/dia/turno/unidade — verifica que o lock pessimista serializa (exatamente 1 sucesso, 1 rejeição, nunca os dois nem erro cru de banco). Usa slots (`domingo`) que não existem no seed, pra não colidir com a UNIQUE real.
+
+## Testes: Webapp — test_webapp.py (16 testes)
+
+Sobe a API Flask via test client (sem processo separado) contra o Postgres real. Cobre `/api/health`, `/api/dashboard/summary`, CRUD de pacientes (listar, buscar, criar, CPF duplicado, campo obrigatório faltando), CRUD de atendimentos (criar, unidade inexistente), listagens de apoio (unidades/procedimentos/escalas/profissionais) e os 5 endpoints de `/api/analytics/*`.
+
+---
+
 ## Como Rodar
 
 ```bash
-# Com DATABASE_URL default
+# Toda a suite (unit + integration)
 DATABASE_URL="dbname=hospital_db user=postgres password=password host=localhost port=5433" pytest
 
-# Com cobertura
+# Com verbose
 DATABASE_URL="..." pytest -v --tb=short
 
-# Apenas testes de negócio
-DATABASE_URL="..." pytest tests/unit/test_negocio.py -v
+# Só SQL puro (rápido, sem seeds/Etapa 2)
+DATABASE_URL="..." pytest tests/unit/test_negocio.py tests/unit/test_core_entities.py -v
+
+# Só Etapa 2 (ORM + consultas avançadas + concorrência)
+DATABASE_URL="..." pytest tests/unit/test_etapa2_*.py -v
+
+# Só webapp
+DATABASE_URL="..." pytest tests/integration/ -v
 ```

@@ -8,9 +8,11 @@ casar com os UUIDs de seed.
 """
 import os
 import uuid
+from datetime import datetime
 
 from sqlalchemy import (
-    create_engine, ForeignKey, String, Integer, Numeric, Text, DateTime, Boolean,
+    create_engine, ForeignKey, ForeignKeyConstraint, String, Integer, Numeric,
+    Text, DateTime, Boolean,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import (
@@ -122,7 +124,7 @@ class Procedimento(Base):
 class Atendimento(Base):
     __tablename__ = "atendimento"
     id_atendimento: Mapped[str] = mapped_column(_UUID, primary_key=True, default=lambda: str(uuid.uuid4()))
-    data_hora: Mapped[str] = mapped_column(DateTime)
+    data_hora: Mapped[datetime] = mapped_column(DateTime)
     duracao_minutos: Mapped[int] = mapped_column(Integer)
     id_paciente: Mapped[str] = mapped_column(_UUID, ForeignKey("paciente.id_pessoa"))
     id_residente: Mapped[str] = mapped_column(_UUID, ForeignKey("residente.id_pessoa"))
@@ -145,7 +147,7 @@ class ProcedimentoRealizado(Base):
     id_procedimento: Mapped[str] = mapped_column(_UUID, ForeignKey("procedimento.id_procedimento"), primary_key=True)
     quantidade: Mapped[int] = mapped_column(Integer)
     tempo_real_minutos: Mapped[int] = mapped_column(Integer)
-    data_hora_inicio: Mapped[str] = mapped_column(DateTime)
+    data_hora_inicio: Mapped[datetime] = mapped_column(DateTime)
     observacao: Mapped[str | None] = mapped_column(Text)
 
     atendimento: Mapped[Atendimento] = relationship(back_populates="procedimentos")
@@ -154,11 +156,19 @@ class ProcedimentoRealizado(Base):
 
 class Faturamento(Base):
     __tablename__ = "faturamento"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["id_atendimento", "id_procedimento"],
+            ["procedimento_realizado.id_atendimento", "procedimento_realizado.id_procedimento"],
+        ),
+    )
     id_faturamento: Mapped[str] = mapped_column(_UUID, primary_key=True)
     id_atendimento: Mapped[str] = mapped_column(_UUID)
     id_procedimento: Mapped[str] = mapped_column(_UUID)
     valor: Mapped[float] = mapped_column(Numeric(10, 2))
     data_emissao: Mapped[str] = mapped_column(String)
+
+    procedimento_realizado: Mapped["ProcedimentoRealizado"] = relationship()
 
 
 class Escala(Base):

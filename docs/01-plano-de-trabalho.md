@@ -66,7 +66,7 @@ Este documento substitui o planejamento genérico anterior (sprints fixos, divis
 - [ ] Alembic para migrations — **não implementado**. O schema é recriado do zero (DDL completo ou `DROP SCHEMA` no `conftest.py`); não há migração incremental. Uma base criada só com o DDL da Etapa 1 quebra as procedures/triggers da Etapa 2 até rodar o DDL completo à mão.
 - [x] Reimplementar as operações da Etapa 1 usando sessões/transações da ORM (`src/etapa2/crud_orm.py`) — self-check: `python -m src.etapa2.crud_orm`
 - [x] Demonstrar lazy vs eager loading em pelo menos uma relação — `selectinload` em `listar_atendimentos_paciente` vs lazy default em `ProcedimentoRealizado.procedimento`
-- **Bugs conhecidos do modelo** (não bloqueiam nota, registrados para correção futura): `Faturamento.id_atendimento`/`id_procedimento` declarados sem `ForeignKey` (o schema tem `ON DELETE RESTRICT`, o modelo não reflete); `data_hora`/`data_hora_inicio` anotados `Mapped[str]` mas a coluna é `DateTime` (o driver devolve `datetime`, não `str`).
+- **Bugs do modelo corrigidos**: `Faturamento` agora declara a `ForeignKeyConstraint` composta pra `PROCEDIMENTO_REALIZADO` (refletindo o `ON DELETE RESTRICT` real do schema); `data_hora`/`data_hora_inicio` corrigidos de `Mapped[str]` para `Mapped[datetime]` (o driver sempre devolveu `datetime`, a anotação estava só errada). Cobertos por `tests/unit/test_etapa2_orm.py`.
 
 ### 5. Consultas avançadas com ORM (1,0 pt) — feito
 - [x] Preceptores que supervisionaram residentes que atenderam pacientes flamenguistas
