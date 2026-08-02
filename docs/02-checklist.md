@@ -5,7 +5,7 @@
 ## Estado Geral
 
 - **Progresso Etapa 1**: **100% concluída** — schema, seeds, CRUD, CLI, consultas analíticas, PDF do DER, apresentação e revisão cruzada, todos verificados contra o Postgres real (16 testes passando).
-- **Progresso Etapa 2**: itens 1–6 (procedures, triggers, views, ORM, consultas avançadas, concorrência) implementados e agora com **testes automatizados** (ORM, consultas avançadas, concorrência com threads reais e a API Flask do webapp) — 68 testes no total, ver [`05-aplicacao/02-testes.md`](05-aplicacao/02-testes.md). O webapp também passou a consumir procedures/views e disparar triggers de verdade (não só a CLI/ORM) — ver [`05-aplicacao/04-webapp.md`](05-aplicacao/04-webapp.md). Falta só o item 7 (vídeo + relatório).
+- **Progresso Etapa 2**: itens 1–6 (procedures, triggers, views, ORM, consultas avançadas, concorrência) implementados e agora com **testes automatizados** (ORM, consultas avançadas, concorrência com threads reais — pessimista e otimista — e a API Flask do webapp) — 71 testes no total, ver [`05-aplicacao/02-testes.md`](05-aplicacao/02-testes.md). O webapp também passou a consumir procedures/views e disparar triggers de verdade (não só a CLI/ORM) — ver [`05-aplicacao/04-webapp.md`](05-aplicacao/04-webapp.md). Falta só o item 7 (vídeo + relatório).
 
 ---
 
@@ -98,9 +98,10 @@ Progresso: itens 1–4 implementados e **verificados contra o Postgres real**.
 
 ### 6. Concorrência e transações — feito
 - [x] Cenário simulado (threads) de duas transações tentando escalar o mesmo residente no mesmo dia/turno/unidade.
-- [x] Lock pessimista (`SELECT ... FOR UPDATE`) serializando as tentativas; uma sucede, a outra é rejeitada com `ConflitoEscalaError`.
-- Implementado em `src/etapa2/concorrencia.py` (rodar com `python -m src.etapa2.concorrencia`).
-- Documentação: [`05-aplicacao/06-concorrencia.md`](05-aplicacao/06-concorrencia.md), com log real da execução (01/08/2026).
+- [x] Lock **pessimista** (`SELECT ... FOR UPDATE`) — serializa as tentativas; a segunda espera o lock e é rejeitada com `ConflitoEscalaError`.
+- [x] Controle **otimista** (sem lock; a `UNIQUE` detecta o conflito na escrita e o `IntegrityError` vira `ConflitoEscalaError`) — as duas threads rodam em paralelo, só quem perde a corrida refaz.
+- Ambos em `src/etapa2/concorrencia.py` (`python -m src.etapa2.concorrencia` roda as duas demos em sequência).
+- Documentação: [`05-aplicacao/06-concorrencia.md`](05-aplicacao/06-concorrencia.md), com logs reais das duas estratégias e tabela comparativa.
 
 ### Ainda em aberto
 - [ ] Item 7 — vídeo de até 8 min + relatório de 2 páginas.
