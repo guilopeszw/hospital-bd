@@ -1,0 +1,40 @@
+/* Painel HU Dra. Yuska Maritan Brito
+   Paleta: clínica, sóbria, com identidade de "prontuário".*/
+
+:root {
+  --bg:        #F3F6F5;
+  --ink:       #10242B;
+  --ink-soft:  #4C6067;
+  --line:      #DAE3E1;
+  --card:      #FFFFFF;
+  --teal:      #0E6E5C;
+  --teal-deep: #0A4F42;
+  --teal-tint: #E4F1EC;
+  --amber:     #C98A2E;
+  --amber-tint:#FBF0DD;
+  --coral:     #C1503D;
+  --coral-tint:#FBE9E4;
+
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
+
+  --radius: 10px;
+  --shadow: 0 1px 2px rgba(16, 36, 43, 0.04), 0 6px 20px rgba(16, 36, 43, 0.05);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+}
+
+button, input, select, textarea { font-family: inherit; font-size: inherit; }
+
+.muted { color: var(--ink-soft); padding: 18px 16px; margin: 0; font-size: 13.5px; }
+.empty { padding: 30px 16px; text-align: center; color: var(--ink-soft); font-size: 13.5px; }

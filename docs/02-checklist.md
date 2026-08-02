@@ -5,6 +5,7 @@
 ## Estado Geral
 
 - **Progresso Etapa 1**: **100% concluída** — schema, seeds, CRUD, CLI, consultas analíticas, PDF do DER, apresentação e revisão cruzada, todos verificados contra o Postgres real (16 testes passando).
+- **Progresso Etapa 2**: itens 1–6 (procedures, triggers, views, ORM, consultas avançadas, concorrência) implementados e agora com **testes automatizados** (ORM, consultas avançadas, concorrência com threads reais — pessimista e otimista — e a API Flask do webapp) — 71 testes no total, ver [`05-aplicacao/02-testes.md`](05-aplicacao/02-testes.md). O webapp também passou a consumir procedures/views e disparar triggers de verdade (não só a CLI/ORM) — ver [`05-aplicacao/04-webapp.md`](05-aplicacao/04-webapp.md). Falta só o item 7 (vídeo + relatório).
 
 ---
 
@@ -17,7 +18,7 @@
 
 ## 2. Implementação do BD
 
-- [x] DDL completo em `../sql/ddl/01`–`12`, todos UUID, com PK/FK/CHECK/UNIQUE/NOT NULL.
+- [x] DDL completo em `../sql/ddl/01`–`14`, todos UUID, com PK/FK/CHECK/UNIQUE/NOT NULL.
 - [x] Seeds acima do mínimo exigido: 5 pacientes, 5 preceptores, 5 residentes, 3 unidades, 10 procedimentos, **16 atendimentos**, **18 procedimentos realizados**, 8 escalas, 3 faturamentos.
 - [x] Volume de seed **calibrado para as consultas analíticas não voltarem vazias**: Dr. Jorge Jesus tem 8 atendimentos em junho/2025 (aparece no `HAVING > 5`) e Dra. Yuska tem exatamente 5 (não aparece — mostra o limite funcionando).
 
@@ -50,7 +51,7 @@ Todas rodadas contra o banco populado; resultados conferidos:
 
 ## Testes automatizados — 16 passando
 
-- `../tests/conftest.py` recria o schema do zero a cada sessão (`DROP SCHEMA public CASCADE` + DDL `01`–`12`). Como isso apaga os seeds, refaça o passo 2 do README antes de demonstrar a CLI.
+- `../tests/conftest.py` recria o schema do zero a cada sessão (`DROP SCHEMA public CASCADE` + DDL `01`–`14`). Como isso apaga os seeds, refaça o passo 2 do README antes de demonstrar a CLI.
 - `../tests/unit/test_core_entities.py` (5): CPF único, regex de CPF, grupo sanguíneo, default de `is_flamengo`.
 - `../tests/unit/test_negocio.py` (11): FK de Atendimento, UNIQUE de Escala, mesmo preceptor com residentes diferentes, enum de `nivel_risco`, CHECK de `capacidade_leitos`, os 4 casos de faturamento (bloqueia delete, FK RESTRICT, permite delete sem faturamento, não fatura duas vezes) e os 2 de exclusividade de papel.
 
@@ -97,9 +98,10 @@ Progresso: itens 1–4 implementados e **verificados contra o Postgres real**.
 
 ### 6. Concorrência e transações — feito
 - [x] Cenário simulado (threads) de duas transações tentando escalar o mesmo residente no mesmo dia/turno/unidade.
-- [x] Lock pessimista (`SELECT ... FOR UPDATE`) serializando as tentativas; uma sucede, a outra é rejeitada com `ConflitoEscalaError`.
-- Implementado em `src/etapa2/concorrencia.py` (rodar com `python -m src.etapa2.concorrencia`).
-- Documentação: [`05-aplicacao/06-concorrencia.md`](05-aplicacao/06-concorrencia.md), com log real da execução (01/08/2026).
+- [x] Lock **pessimista** (`SELECT ... FOR UPDATE`) — serializa as tentativas; a segunda espera o lock e é rejeitada com `ConflitoEscalaError`.
+- [x] Controle **otimista** (sem lock; a `UNIQUE` detecta o conflito na escrita e o `IntegrityError` vira `ConflitoEscalaError`) — as duas threads rodam em paralelo, só quem perde a corrida refaz.
+- Ambos em `src/etapa2/concorrencia.py` (`python -m src.etapa2.concorrencia` roda as duas demos em sequência).
+- Documentação: [`05-aplicacao/06-concorrencia.md`](05-aplicacao/06-concorrencia.md), com logs reais das duas estratégias e tabela comparativa.
 
 ### Ainda em aberto
 - [ ] Item 7 — vídeo de até 8 min + relatório de 2 páginas.
