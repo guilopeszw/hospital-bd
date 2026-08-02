@@ -65,3 +65,31 @@ def db_cursor(db_connection):
     yield cursor
     db_connection.rollback()
     cursor.close()
+
+
+@pytest.fixture(scope="session")
+def seeded_db(setup_database):
+    """Carrega seeds + procedures + triggers + views (Etapa 2) uma vez por
+    sessão, ADITIVAMENTE sobre o schema vazio do setup_database (sem
+    DROP SCHEMA de novo — os testes em SQL puro já rodaram/rodam isolados
+    via db_cursor com rollback, então não há o que perder).
+
+    Usado pelos testes de ORM/consultas avançadas/concorrência/webapp, que
+    precisam de dados reais e comprometidos (commit) porque leem por uma
+    conexão diferente (engine SQLAlchemy / cliente Flask), não pela
+    transação isolada de db_cursor.
+    """
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    conn = psycopg2.connect(DATABASE_URL)
+    conn.autocommit = True
+    cursor = conn.cursor()
+    try:
+        for subdir in ("sql/dml", "sql/procedures", "sql/triggers", "sql/views"):
+            folder = os.path.join(base_dir, subdir)
+            for fname in sorted(os.listdir(folder)):
+                with open(os.path.join(folder, fname), "r", encoding="utf-8") as f:
+                    cursor.execute(f.read())
+    finally:
+        cursor.close()
+        conn.close()
+    return DATABASE_URL
