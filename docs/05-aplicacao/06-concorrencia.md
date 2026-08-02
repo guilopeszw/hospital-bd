@@ -17,7 +17,7 @@ a inconsistência final nos dados, mas quem perde a corrida recebe um
 `IntegrityError` cru do driver, sem chance de tratar isso como uma regra de
 negócio (ex.: devolver uma mensagem amigável, tentar outro horário, etc.).
 
-## Solução: lock pessimista
+## Solução 1 — lock pessimista
 
 `escalar_residente_com_lock()` usa `SELECT ... FOR UPDATE` na linha de
 `RESIDENTE` antes de checar conflito e inserir. A primeira transação a
@@ -85,11 +85,69 @@ A demo termina com um `assert` conferindo que houve exatamente 1 sucesso e
 1 rejeição — nunca as duas escalas indo pra frente, nunca as duas caindo
 num erro de banco não tratado.
 
-## Por que pessimista e não otimista
+## Solução 2 — controle otimista
 
-Optou-se por lock pessimista (`FOR UPDATE`) em vez de otimista (coluna de
-versão) porque a disputa aqui é sobre um recurso pontual e de vida curta —
-a checagem+insert de uma escala leva milissegundos, então o custo de
-segurar um lock de linha por esse tempo é baixo, e evita o retrabalho de um
-lock otimista (que exigiria a segunda transação recomeçar do zero após
-descobrir o conflito só na hora do commit).
+`escalar_residente_otimista()` faz o oposto: **não segura lock nenhum**. As
+duas transações seguem em paralelo, fazem a checagem best-effort e tentam o
+`INSERT`. A `UNIQUE(id_unidade, dia_semana, turno, id_residente)` é o
+detector de conflito — quem perde a corrida recebe o `IntegrityError` no
+flush, que é capturado e traduzido para o mesmo `ConflitoEscalaError` de
+negócio (sem vazar erro cru do driver).
+
+```python
+try:
+    with Session.begin() as s:
+        # checagem best-effort (sem lock) + insert
+        s.add(nova)
+        s.flush()   # a UNIQUE é validada aqui; se a outra ganhou, estoura
+except IntegrityError:
+    raise ConflitoEscalaError(...)   # perdeu a corrida, rejeita limpo
+```
+
+O conflito é detectado **depois**, no momento da escrita — mais
+concorrência (ninguém espera), ao custo de retrabalho de quem perde.
+
+### Log real (controle otimista)
+
+```
+===== DEMO: controle otimista (sem lock, UNIQUE detecta) =====
+[11:50:20.281] [thread-A] sem lock — checando conflito (best-effort) e tentando inserir…
+[11:50:20.334] [thread-B] sem lock — checando conflito (best-effort) e tentando inserir…
+[11:50:20.796] [thread-A] OK — escala d4b7366b-…-8cf14c9cb70f criada. Commitando.
+[11:50:20.843] [thread-B] CONFLITO detectado na escrita (UNIQUE) — perdeu a corrida. Rejeitando.
+
+--- resultado final ---
+thread-A: ('sucesso', 'd4b7366b-…')
+thread-B: ('rejeitada', 'Residente c1111111-… já está escalado em terca/noite nessa unidade.')
+```
+
+Repara na diferença de comportamento em relação ao pessimista: aqui as duas
+threads entram na seção crítica **quase juntas** (`20.281` e `20.334`) —
+ninguém fica bloqueado. A `thread-B` só descobre o conflito na hora do
+`INSERT` (`20.843`), quando a UNIQUE dispara. No log pessimista, ao
+contrário, a `thread-B` ficou ~467ms **parada** esperando o lock antes de
+sequer checar.
+
+## Pessimista vs. otimista — quando usar cada um
+
+| | Pessimista (`FOR UPDATE`) | Otimista (UNIQUE detecta) |
+|---|---|---|
+| Lock | trava a linha do residente até o commit | nenhum |
+| Segunda transação | **espera** o lock liberar | roda em paralelo, falha na escrita |
+| Detecta o conflito | antes (na checagem, já sob lock) | depois (no `INSERT`) |
+| Custo | contenção: threads serializam e esperam | retrabalho: quem perde refaz/rejeita |
+| Melhor quando | conflito é **provável** (muita disputa no mesmo slot) | conflito é **raro** (disputa é exceção) |
+
+Ambas as estratégias entregam a mesma garantia — nunca duas escalas do mesmo
+residente no mesmo slot, e nunca um erro cru de banco escapando — e a
+`UNIQUE` do schema é a rede de segurança final nos dois casos. Para o volume
+deste sistema (escala hospitalar, poucos conflitos reais), o **otimista**
+tende a ser mais eficiente; o **pessimista** compensa se o mesmo slot passar
+a ser muito disputado.
+
+Rodar as duas demos em sequência:
+
+```bash
+DATABASE_URL="dbname=hospital_db user=postgres password=password host=localhost port=5433" \
+  python -m src.etapa2.concorrencia
+```
