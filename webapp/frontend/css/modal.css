@@ -31,8 +31,8 @@
 .modal__close:hover { color: var(--ink); }
 .modal__close:active { scale: 0.9; }
 
-#form-paciente, #form-atendimento { padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
-#form-paciente label, #form-atendimento label { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
+#form-paciente, #form-profissional, #form-atendimento, #form-escala { padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
+#form-paciente label, #form-profissional label, #form-atendimento label, #form-escala label { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
 
 .modal__error { color: var(--coral); font-size: 12.5px; min-height: 1px; }
 .modal__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }

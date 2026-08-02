@@ -117,7 +117,10 @@
     <!-- PROFISSIONAIS -->
     <section class="view" id="view-profissionais">
       <div class="panel">
-        <div class="panel__head"><h2>Residentes e preceptores</h2></div>
+        <div class="panel__head">
+          <h2>Residentes e preceptores</h2>
+          <button class="btn btn--primary" id="btn-novo-profissional">+ Novo profissional</button>
+        </div>
         <div class="table-wrap" id="tabela-profissionais"><p class="muted">Carregando…</p></div>
       </div>
     </section>
@@ -229,6 +232,45 @@
       <div class="modal__actions">
         <button type="button" class="btn" data-close-modal>Cancelar</button>
         <button type="submit" class="btn btn--primary">Salvar prontuário</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: novo profissional -->
+<div class="modal" id="modal-profissional">
+  <div class="modal__card">
+    <div class="modal__head">
+      <h3>Novo profissional</h3>
+      <button class="modal__close" data-close-modal>&times;</button>
+    </div>
+    <form id="form-profissional">
+      <label>Papel
+        <select required name="tipo" class="input" id="select-profissional-tipo">
+          <option value="residente">Residente</option>
+          <option value="preceptor">Preceptor</option>
+        </select>
+      </label>
+      <label>Nome completo<input required name="nome" class="input" placeholder="Ex: João Bosco Duarte"></label>
+      <label>CPF (11 dígitos)<input required name="cpf" class="input" maxlength="11" placeholder="Somente números"></label>
+      <label>Data de nascimento<input required type="date" name="data_nascimento" class="input"></label>
+      <label>CRM<input required name="crm" class="input" placeholder="Ex: CRM/PB 1234"></label>
+      <label>Data de admissão<input required type="date" name="data_admissao" class="input"></label>
+      <label>Especialidade<input required name="especialidade" class="input" placeholder="Ex: Cardiologia"></label>
+      <label id="campo-ano-residencia">Ano de residência
+        <select name="ano_residencia" class="input">
+          <option value="R1">R1</option>
+          <option value="R2">R2</option>
+          <option value="R3">R3</option>
+        </select>
+      </label>
+      <label id="campo-titulacao" style="display:none">Titulação
+        <input name="titulacao" class="input" placeholder="Ex: Doutor">
+      </label>
+      <div class="modal__error" id="erro-profissional"></div>
+      <div class="modal__actions">
+        <button type="button" class="btn" data-close-modal>Cancelar</button>
+        <button type="submit" class="btn btn--primary">Salvar profissional</button>
       </div>
     </form>
   </div>
