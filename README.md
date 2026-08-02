@@ -197,7 +197,7 @@ source .venv/bin/activate   # Linux/macOS
 pip install -r requirements.txt
 ```
 
-Dependências: `psycopg2` (conector PostgreSQL), `sqlalchemy` (ORM da Etapa 2) e `pytest` (testes). O webapp tem dependências próprias em `webapp/api/requirements.txt` (Flask + flask-cors).
+Dependências: `psycopg2` (conector PostgreSQL), `sqlalchemy` (ORM da Etapa 2), `pytest` (testes), `flask`/`flask-cors` (webapp). Um único `requirements.txt` na raiz cobre Etapa 1 + Etapa 2 + webapp.
 
 ### 4. Rodar os Testes
 
@@ -297,9 +297,8 @@ python -m src.etapa1.atendimento_crud faturar <id_atendimento> <id_procedimento>
 ```bash
 # 1. Banco no ar + schema/seeds (passos 1 e 2 acima)
 
-# 2. API
+# 2. API (dependências já instaladas no passo 3 — requirements.txt da raiz)
 cd webapp/api
-pip install -r requirements.txt
 DATABASE_URL="dbname=hospital_db user=postgres password=password host=localhost port=5433" python app.py
 # sobe em http://localhost:5055 (env PORT sobrescreve)
 
@@ -334,9 +333,13 @@ hospital-bd/
 │       └── concorrencia.py         # Cenário de concorrência com lock pessimista
 ├── webapp/
 │   ├── api/
-│   │   └── app.py                  # API REST Flask sobre o Postgres
+│   │   ├── app.py                  # entry point: cria o Flask app e registra os blueprints
+│   │   ├── db.py                   # conexão + query()/execute() usados por todos os blueprints
+│   │   └── routes/                 # 1 blueprint por domínio (pacientes, escalas, analytics, orm...)
 │   └── frontend/
-│       └── index.html + css/ + js/ # Painel HTML/CSS/JS puro
+│       ├── index.html
+│       ├── css/                    # base, layout, components, modal, responsive
+│       └── js/                     # ES modules: core/, views/, modals/, main.js
 ├── tests/
 │   ├── conftest.py                 # Fixture: schema isolado por sessão
 │   └── unit/

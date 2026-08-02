@@ -1,0 +1,10 @@
+@media (max-width: 880px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { position: relative; height: auto; flex-direction: row; align-items: center; overflow-x: auto; }
+  .brand { border-bottom: none; margin-bottom: 0; padding: 4px 12px 4px 0; }
+  .nav { flex-direction: row; }
+  .sidebar__footer { display: none; }
+  .main { padding: 20px 16px 50px 16px; }
+  .stat-grid { grid-template-columns: 1fr 1fr; }
+  .indicadores-grid { grid-template-columns: 1fr; }
+}

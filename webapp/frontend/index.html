@@ -7,7 +7,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/modal.css">
+<link rel="stylesheet" href="css/responsive.css">
 </head>
 <body>
 
@@ -179,6 +183,21 @@
           <div class="table-wrap" id="residentes-sem-supervisor"><p class="muted">Carregando…</p></div>
         </div>
 
+        <div class="panel">
+          <div class="panel__head"><h2>Preceptores de residentes que atenderam flamenguistas</h2><span class="tag">ORM · SQLAlchemy</span></div>
+          <div class="table-wrap" id="orm-preceptores-flamenguistas"><p class="muted">Carregando…</p></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__head"><h2>Último atendimento por paciente</h2><span class="tag">ORM · SQLAlchemy</span></div>
+          <div class="table-wrap" id="orm-ultimo-atendimento"><p class="muted">Carregando…</p></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__head"><h2>% de procedimentos de alto risco</h2><span class="tag">ORM · por residente</span></div>
+          <div class="table-wrap" id="orm-percentual-alto-risco"><p class="muted">Carregando…</p></div>
+        </div>
+
       </div>
     </section>
 
@@ -288,6 +307,6 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="js/app.js"></script>
+<script type="module" src="js/main.js"></script>
 </body>
 </html>
