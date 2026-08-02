@@ -1,0 +1,58 @@
+.modal {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(16, 36, 43, 0.45);
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 20px;
+}
+.modal.is-open { display: flex; }
+
+.modal__card {
+  background: #fff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 440px;
+  max-height: 88vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(16,36,43,0.25);
+}
+
+.modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.modal__head h3 { margin: 0; font-family: var(--font-display); font-size: 17px; }
+.modal__close { background: none; border: none; font-size: 22px; line-height: 1; cursor: pointer; color: var(--ink-soft); transition: color .12s ease, scale .1s ease; }
+.modal__close:hover { color: var(--ink); }
+.modal__close:active { scale: 0.9; }
+
+#form-paciente, #form-atendimento { padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
+#form-paciente label, #form-atendimento label { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
+
+.modal__error { color: var(--coral); font-size: 12.5px; min-height: 1px; }
+.modal__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+/* toast */
+
+.toast {
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--ink);
+  color: #fff;
+  padding: 11px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease, transform .2s ease;
+  z-index: 100;
+}
+.toast.is-visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.is-error { background: var(--coral); }
