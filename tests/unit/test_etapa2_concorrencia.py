@@ -7,7 +7,10 @@ from sqlalchemy import delete, select
 
 pytestmark = pytest.mark.usefixtures("seeded_db")
 
-from src.etapa2.concorrencia import ConflitoEscalaError, demo, escalar_residente_com_lock
+from src.etapa2.concorrencia import (
+    ConflitoEscalaError, demo, demo_otimista,
+    escalar_residente_com_lock, escalar_residente_otimista,
+)
 from src.etapa2.models import Escala, Session
 
 ID_UNIDADE = "f1111111-1111-1111-1111-111111111111"
@@ -64,3 +67,41 @@ def test_demo_duas_threads_concorrentes_uma_sucede_uma_e_rejeitada():
     status = sorted(r[0] for r in resultados.values())
     assert status == ["rejeitada", "sucesso"]
     _limpar_slot("domingo", "noite")
+
+
+# --- controle otimista (sem lock; UNIQUE detecta na escrita) ---
+
+def test_escalar_residente_otimista_cria_escala():
+    _limpar_slot("sabado", "manha")
+    id_escala = escalar_residente_otimista(
+        ID_UNIDADE, "sabado", "manha", ID_RESIDENTE, ID_PRECEPTOR_A,
+    )
+    with Session() as s:
+        assert s.get(Escala, id_escala) is not None
+    _limpar_slot("sabado", "manha")
+
+
+def test_escalar_residente_otimista_rejeita_slot_ja_ocupado():
+    _limpar_slot("sabado", "tarde")
+    escalar_residente_otimista(ID_UNIDADE, "sabado", "tarde", ID_RESIDENTE, ID_PRECEPTOR_A)
+    with pytest.raises(ConflitoEscalaError):
+        escalar_residente_otimista(ID_UNIDADE, "sabado", "tarde", ID_RESIDENTE, ID_PRECEPTOR_B)
+    _limpar_slot("sabado", "tarde")
+
+
+def test_demo_otimista_uma_sucede_uma_e_rejeitada():
+    """Mesma disputa, controle otimista: as duas threads rodam em paralelo
+    (sem lock) e a UNIQUE rejeita quem perde a corrida na escrita — nunca as
+    duas passam, nunca um IntegrityError cru escapa."""
+    _limpar_slot("sabado", "noite")
+    resultados = demo_otimista(
+        id_unidade=ID_UNIDADE,
+        dia_semana="sabado",
+        turno="noite",
+        id_residente=ID_RESIDENTE,
+        id_preceptor_a=ID_PRECEPTOR_A,
+        id_preceptor_b=ID_PRECEPTOR_B,
+    )
+    status = sorted(r[0] for r in resultados.values())
+    assert status == ["rejeitada", "sucesso"]
+    _limpar_slot("sabado", "noite")
