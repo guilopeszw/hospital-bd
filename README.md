@@ -17,6 +17,7 @@ Sistema acadêmico de gestão hospitalar, desenvolvido como projeto da disciplin
 **Etapa 2 — Funcionalidades avançadas** — stored procedures com transações, triggers (sobreposição de escala, auditoria, média de procedimentos), views analíticas, migração para SQLAlchemy 2.x, consultas avançadas via ORM e concorrência com lock pessimista (`SELECT ... FOR UPDATE`).
 
 ▶ **Vídeo da Etapa 2:** <https://youtu.be/ZbYUd1wGknM>
+▶ **Relatório etapa 2:** <https://docs.google.com/document/d/1FBYA6DWmEfmdeTB0qnFny--bJ1RlSYLeeqfp5A71OUE/edit?usp=sharing>
 
 ## Stack
 
