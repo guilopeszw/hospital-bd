@@ -9,10 +9,8 @@ DATABASE_URL = os.getenv(
     "dbname=hospital_db user=postgres password=password host=localhost port=5433",
 )
 
-
 def get_connection():
     return psycopg2.connect(DATABASE_URL)
-
 
 def query(sql, params=None, one=False):
     """Executa um SELECT e devolve lista de dicts (ou um dict se one=True)."""
@@ -25,7 +23,6 @@ def query(sql, params=None, one=False):
             return (rows[0] if rows else None) if one else rows
     finally:
         conn.close()
-
 
 def execute(sql, params=None, returning=False):
     """Executa um INSERT/UPDATE/DELETE. Se returning=True, devolve a linha retornada."""
@@ -41,7 +38,6 @@ def execute(sql, params=None, returning=False):
         raise
     finally:
         conn.close()
-
 
 def api_error(message, status=400):
     return jsonify({"erro": message}), status

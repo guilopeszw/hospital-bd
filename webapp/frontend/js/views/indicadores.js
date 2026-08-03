@@ -76,6 +76,17 @@ export async function carregarIndicadores() {
     })
     .catch(() => { document.getElementById("residentes-sem-supervisor").innerHTML = `<div class="empty">Sem dados.</div>`; });
 
+  // view vw_estatisticas_atendimentos_mensal
+  apiGet("/views/estatisticas-mensais")
+    .then((rows) => {
+      document.getElementById("estatisticas-mensais").innerHTML = tabela(
+        ["Mês", "Unidade", "Atendimentos", "Duração média", "Procedimento mais comum"],
+        rows,
+        (r) => `<tr><td>${fmtData(r.mes)}</td><td>${esc(r.unidade)}</td><td><strong>${esc(r.total_atendimentos)}</strong></td><td>${r.duracao_media_minutos != null ? esc(r.duracao_media_minutos) + " min" : "—"}</td><td>${esc(r.procedimento_mais_comum || "—")}</td></tr>`
+      );
+    })
+    .catch(() => { document.getElementById("estatisticas-mensais").innerHTML = `<div class="empty">Sem dados.</div>`; });
+
   // Etapa 2 — item 5: consultas avançadas via ORM (src/etapa2/consultas_avancadas.py)
   apiGet("/orm/preceptores-supervisionaram-flamenguistas")
     .then((nomes) => {

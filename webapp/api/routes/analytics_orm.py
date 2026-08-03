@@ -9,21 +9,17 @@ if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 from flask import Blueprint, jsonify
-
 from src.etapa2 import consultas_avancadas as ca
 
 bp = Blueprint("analytics_orm", __name__)
-
 
 @bp.route("/api/orm/preceptores-supervisionaram-flamenguistas")
 def preceptores_flamenguistas():
     return jsonify(ca.preceptores_supervisionaram_flamenguistas())
 
-
 @bp.route("/api/orm/ultimo-atendimento-por-paciente")
 def ultimo_atendimento_por_paciente():
     return jsonify(ca.ultimo_atendimento_por_paciente())
-
 
 @bp.route("/api/orm/percentual-alto-risco-por-residente")
 def percentual_alto_risco_por_residente():

@@ -26,14 +26,18 @@ def listar_profissionais():
 def cadastrar_profissional():
     dados = request.get_json(force=True)
     tipo = dados.get("tipo")
+    
     if tipo not in ("residente", "preceptor"):
         return api_error("Campo 'tipo' deve ser 'residente' ou 'preceptor'.")
     obrigatorios = ["nome", "cpf", "data_nascimento", "crm", "data_admissao", "especialidade"]
+
     if tipo == "residente":
         obrigatorios.append("ano_residencia")
+
     else:
         obrigatorios.append("titulacao")
     faltando = [c for c in obrigatorios if not dados.get(c)]
+
     if faltando:
         return api_error(f"Campos obrigatórios ausentes: {', '.join(faltando)}")
 
@@ -62,11 +66,14 @@ def cadastrar_profissional():
                 )
             conn.commit()
             return jsonify({"id_pessoa": id_pessoa}), 201
+        
     except psycopg2.errors.UniqueViolation:
         conn.rollback()
         return api_error("Já existe um profissional cadastrado com esse CPF.", 409)
+    
     except psycopg2.Error as e:
         conn.rollback()
         return api_error(f"Erro ao cadastrar profissional: {e.pgerror or str(e)}", 400)
+    
     finally:
         conn.close()

@@ -13,8 +13,10 @@ def cadastrar_escala():
     dados = request.get_json(force=True)
     obrigatorios = ["id_unidade", "dia_semana", "turno", "id_residente", "id_preceptor"]
     faltando = [c for c in obrigatorios if not dados.get(c)]
+
     if faltando:
         return api_error(f"Campos obrigatórios ausentes: {', '.join(faltando)}")
+    
     try:
         resultado = execute(
             """INSERT INTO ESCALA (id_unidade, dia_semana, turno, id_residente, id_preceptor)
@@ -24,12 +26,15 @@ def cadastrar_escala():
             returning=True,
         )
         return jsonify(resultado), 201
+    
     except psycopg2.errors.UniqueViolation:
         return api_error("Esse residente já está escalado nesse dia/turno/unidade.", 409)
+    
     except psycopg2.errors.RaiseException as e:
         # Levantado pelo trigger trg_check_sobreposicao_escala. diag.message_primary
         # é só a mensagem do RAISE, sem o CONTEXT/traceback do PL/pgSQL.
         return api_error(e.diag.message_primary or str(e).splitlines()[0], 409)
+    
     except psycopg2.Error as e:
         return api_error(f"Erro ao cadastrar escala: {e.pgerror or str(e)}", 400)
 
@@ -57,11 +62,13 @@ def reajustar_escala():
             returning=True,
         )
         return jsonify(resultado)
+    
     except psycopg2.errors.RaiseException as e:
         # Pode vir da própria sp_reajustar_escala (conflito na unidade de
         # destino) ou do trigger trg_check_sobreposicao_escala (conflito
         # entre unidades diferentes) — message_primary cobre os dois.
         return api_error(e.diag.message_primary or str(e).splitlines()[0], 409)
+    
     except psycopg2.Error as e:
         return api_error(f"Erro ao reajustar escala: {e.pgerror or str(e)}", 400)
 

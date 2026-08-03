@@ -1,11 +1,8 @@
 from datetime import date
-
 from flask import Blueprint, jsonify, request
-
 from db import query
 
 bp = Blueprint("analytics", __name__)
-
 
 @bp.route("/api/analytics/ranking-residentes")
 def analytics_ranking_residentes():
@@ -19,7 +16,6 @@ def analytics_ranking_residentes():
         ORDER BY total_atendimentos DESC, p.nome
     """
     return jsonify(query(sql))
-
 
 @bp.route("/api/analytics/preceptores-mais-atendimentos")
 def analytics_preceptores_mes():
@@ -38,7 +34,6 @@ def analytics_preceptores_mes():
         ORDER BY total_atendimentos DESC
     """
     return jsonify(query(sql, (ano, mes, minimo)))
-
 
 @bp.route("/api/analytics/plantoes-mes")
 def analytics_plantoes_mes():
@@ -69,7 +64,6 @@ def analytics_plantoes_mes():
     """
     return jsonify(query(sql))
 
-
 @bp.route("/api/analytics/pacientes-sem-risco-alto")
 def analytics_pacientes_sem_risco_alto():
     sql = """
@@ -86,13 +80,11 @@ def analytics_pacientes_sem_risco_alto():
     """
     return jsonify(query(sql))
 
-
 @bp.route("/api/analytics/tempo-medio-espera")
 def analytics_tempo_medio_espera():
     """Chama a stored procedure sp_calcular_tempo_medio_espera (Etapa 2 —
     item 1): tempo médio entre chegada e 1º procedimento, por unidade."""
     return jsonify(query("SELECT * FROM sp_calcular_tempo_medio_espera()"))
-
 
 @bp.route("/api/analytics/tempo-medio-residente")
 def analytics_tempo_medio_residente():

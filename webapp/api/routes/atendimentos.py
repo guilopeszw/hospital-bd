@@ -98,14 +98,17 @@ def registrar_procedimento(id_atendimento):
     """INSERT em PROCEDIMENTO_REALIZADO — dispara automaticamente o
     trigger trg_atualiza_media_procedimentos (Etapa 2 — item 2), que
     recalcula PROCEDIMENTO.media_tempo_procedimento."""
+
     dados = request.get_json(force=True)
     obrigatorios = ["id_procedimento", "tempo_real_minutos", "data_hora_inicio"]
     faltando = [c for c in obrigatorios if not dados.get(c)]
+
     if faltando:
         return api_error(f"Campos obrigatórios ausentes: {', '.join(faltando)}")
 
     if not query("SELECT 1 FROM ATENDIMENTO WHERE id_atendimento = %s", (id_atendimento,), one=True):
         return api_error("Atendimento não encontrado.", 404)
+    
     if not query("SELECT 1 FROM PROCEDIMENTO WHERE id_procedimento = %s", (dados["id_procedimento"],), one=True):
         return api_error("Procedimento não encontrado.", 404)
 
@@ -120,8 +123,10 @@ def registrar_procedimento(id_atendimento):
              dados["tempo_real_minutos"], dados["data_hora_inicio"], dados.get("observacao")),
         )
         return jsonify({"id_atendimento": id_atendimento, "id_procedimento": dados["id_procedimento"]}), 201
+    
     except psycopg2.errors.UniqueViolation:
         return api_error("Esse procedimento já foi registrado nesse atendimento.", 409)
+    
     except psycopg2.Error as e:
         return api_error(f"Erro ao registrar procedimento: {e.pgerror or str(e)}", 400)
 
